@@ -1,0 +1,23 @@
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Claude local settings
+.claude/settings.local.json
+
+# High score file (local state)
+highscore.dat
