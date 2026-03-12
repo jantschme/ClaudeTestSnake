@@ -8,13 +8,14 @@ import array
 import pathlib
 
 # ── Config ────────────────────────────────────────────────────────────────────
-CELL  = 44
-COLS  = 20
-ROWS  = 16
-W     = COLS * CELL          # 880
-GH    = ROWS * CELL          # 704
-H     = GH + 54              # 758
-FPS   = 10
+CELL  = 64
+COLS  = 16
+ROWS  = 12
+W     = COLS * CELL          # 1024
+GH    = ROWS * CELL          # 768
+H     = GH + 60              # 828
+FPS   = 8
+RENDER_FPS = 60
 TIME_ATTACK_SECS = 60
 
 # ── Colors ────────────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ LEFT  = (-1,  0)
 UP    = ( 0, -1)
 DOWN  = ( 0,  1)
 OPPOSITES = {UP: DOWN, DOWN: UP, LEFT: RIGHT, RIGHT: LEFT}
-SPEED_MULT = {"slow": 0.6, "normal": 1.0, "fast": 1.6}
+SPEED_MULT = {"slow": 0.55, "normal": 0.80, "fast": 1.20}
 CHARACTERS = ["mammoth", "bunny", "bear"]
 CHAR_FOOD  = {"mammoth": "lolly", "bunny": "carrot", "bear": "honey"}
 
@@ -264,9 +265,8 @@ def make_body_surf(char="mammoth"):
 
 # ── Animal heads ──────────────────────────────────────────────────────────────
 
-def draw_head_mammoth(screen, gx, gy, direction):
+def draw_head_mammoth(screen, px, py, direction):
     c  = CELL
-    px, py = gx * c, gy * c
     cx, cy = px + c//2, py + c//2
     dx, dy = direction
     px2, py2 = -dy, dx  # perp
@@ -310,9 +310,8 @@ def draw_head_mammoth(screen, gx, gy, direction):
     fcirc(screen, (105,66,28), trunk_pts[-1][0]-1, trunk_pts[-1][1]-1, c//15)
 
 
-def draw_head_bunny(screen, gx, gy, direction):
+def draw_head_bunny(screen, px, py, direction):
     c  = CELL
-    px, py = gx * c, gy * c
     cx, cy = px + c//2, py + c//2
     dx, dy = direction
     px2, py2 = -dy, dx
@@ -345,9 +344,8 @@ def draw_head_bunny(screen, gx, gy, direction):
         pygame.draw.line(screen, (200,180,180), (nx, ny), (wx, wy), 1)
 
 
-def draw_head_bear(screen, gx, gy, direction):
+def draw_head_bear(screen, px, py, direction):
     c  = CELL
-    px, py = gx * c, gy * c
     cx, cy = px + c//2, py + c//2
     dx, dy = direction
     px2, py2 = -dy, dx
@@ -376,13 +374,13 @@ def draw_head_bear(screen, gx, gy, direction):
         fcirc(screen, (255,255,255), ecx+2, ecy-2, max(1, c//22))
 
 
-def draw_head(screen, gx, gy, direction, character="mammoth"):
+def draw_head(screen, px, py, direction, character="mammoth"):
     if character == "bunny":
-        draw_head_bunny(screen, gx, gy, direction)
+        draw_head_bunny(screen, px, py, direction)
     elif character == "bear":
-        draw_head_bear(screen, gx, gy, direction)
+        draw_head_bear(screen, px, py, direction)
     else:
-        draw_head_mammoth(screen, gx, gy, direction)
+        draw_head_mammoth(screen, px, py, direction)
 
 
 # ── Food surfaces ─────────────────────────────────────────────────────────────
@@ -588,50 +586,52 @@ def draw_bg_grid(screen):
     screen.blit(ov, (0, 0))
 
 
-def draw_menu(screen, fonts, save, food_surf):
-    font_big, font_med, _ = fonts
-    s = T[save["language"]]
-    draw_bg_grid(screen)
-    screen.blit(food_surf, (W//2 - 160 - CELL//2, 155))
-    screen.blit(food_surf, (W//2 + 160 - CELL//2, 155))
-    draw_centered(screen, font_big, "MAMMOTH", 192, TUSK_C)
-    rects = {
-        "play":     make_rect(W//2, 360),
-        "settings": make_rect(W//2, 438),
-        "quit":     make_rect(W//2, 516),
-    }
-    draw_btn(screen, font_med, s["play"],         rects["play"])
-    draw_btn(screen, font_med, s["settings_btn"], rects["settings"])
-    draw_btn(screen, font_med, s["quit"],          rects["quit"])
-    return rects
-
-
-def draw_char_select(screen, fonts, save, food_surfs, body_surfs):
+def draw_menu(screen, fonts, save, food_surfs, body_surfs, character):
     font_big, font_med, font_small = fonts
     s = T[save["language"]]
-    screen.fill(BG)
-    ov = pygame.Surface((W, H), pygame.SRCALPHA)
-    ov.fill((0, 0, 0, 80))
-    screen.blit(ov, (0, 0))
-    draw_centered(screen, font_big, s["char_select"], 90, TUSK_C)
-    pygame.draw.line(screen, GRID_C, (W//4, 148), (W*3//4, 148), 1)
+    draw_bg_grid(screen)
+    draw_centered(screen, font_big, "MAMMOTH", 80, TUSK_C)
 
+    # Character selection cards
     char_names = {"mammoth": s["char_mammoth"], "bunny": s["char_bunny"], "bear": s["char_bear"]}
-    centers_x  = [W//4, W//2, W*3//4]
+    centers_x = [W//4, W//2, W*3//4]
+    card_w, card_h = 240, 240
     rects = {}
-    for i, char in enumerate(CHARACTERS):
-        cx_c = centers_x[i]
-        screen.blit(body_surfs[char], (cx_c - CELL//2, 185))
-        screen.blit(food_surfs[char], (cx_c - CELL//2, 245))
-        name_lbl = font_small.render(char_names[char], True, TEXT_C)
-        screen.blit(name_lbl, name_lbl.get_rect(center=(cx_c, 310)))
-        r = make_rect(cx_c, 370, 190, 52)
-        draw_btn(screen, font_med, char_names[char], r, selected=(save.get("last_character") == char))
-        rects[char] = r
 
-    rects["back"] = make_rect(W//2, 480)
-    draw_btn(screen, font_med, s["back"], rects["back"])
+    for i, char in enumerate(CHARACTERS):
+        cx = centers_x[i]
+        card_x = cx - card_w // 2
+        card_y = 220 - card_h // 2
+
+        # Draw card background
+        is_selected = (character == char)
+        bg_color = BTN_SEL if is_selected else BTN_BG
+        border_color = TUSK_C if is_selected else GRID_C
+        pygame.draw.rect(screen, bg_color, (card_x, card_y, card_w, card_h), border_radius=12)
+        pygame.draw.rect(screen, border_color, (card_x, card_y, card_w, card_h), 4, border_radius=12)
+
+        # Draw body
+        screen.blit(body_surfs[char], (cx - CELL//2, card_y + 30))
+        # Draw food
+        screen.blit(food_surfs[char], (cx - CELL//2, card_y + 100))
+        # Draw name
+        name_lbl = font_small.render(char_names[char], True, TEXT_C)
+        screen.blit(name_lbl, name_lbl.get_rect(center=(cx, card_y + 200)))
+
+        rects[f"char_{char}"] = pygame.Rect(card_x, card_y, card_w, card_h)
+
+    # Control buttons
+    rects["play"] = make_rect(W//2, 540)
+    rects["settings"] = make_rect(W//2, 618)
+    rects["quit"] = make_rect(W//2, 696)
+
+    draw_btn(screen, font_med, s["play"], rects["play"])
+    draw_btn(screen, font_med, s["settings_btn"], rects["settings"])
+    draw_btn(screen, font_med, s["quit"], rects["quit"])
+
     return rects
+
+
 
 
 def draw_mode_select(screen, fonts, save):
@@ -706,7 +706,8 @@ def draw_settings(screen, fonts, save):
 
 
 def draw_game_scene(screen, fonts, save, snake, direction, food, score,
-                    character, mode, time_left, obstacles, food_surfs, body_surfs, particles):
+                    character, mode, time_left, obstacles, food_surfs, body_surfs, particles,
+                    prev_snake=None, move_t=1.0):
     font_big, font_med, font_small = fonts
     screen.fill(BG)
     if save["show_grid"]:
@@ -718,10 +719,50 @@ def draw_game_scene(screen, fonts, save, snake, direction, food, score,
     for seg in reversed(snake[1:]):
         screen.blit(body_surfs[character], (seg[0]*CELL, seg[1]*CELL))
     if snake:
-        draw_head(screen, snake[0][0], snake[0][1], direction, character)
+        # Interpolate head position
+        if prev_snake and move_t < 1.0:
+            hx = prev_snake[0][0] + (snake[0][0] - prev_snake[0][0]) * move_t
+            hy = prev_snake[0][1] + (snake[0][1] - prev_snake[0][1]) * move_t
+            head_px = int(hx * CELL)
+            head_py = int(hy * CELL)
+        else:
+            head_px = snake[0][0] * CELL
+            head_py = snake[0][1] * CELL
+        draw_head(screen, head_px, head_py, direction, character)
     screen.blit(food_surfs[character], (food[0]*CELL, food[1]*CELL))
     draw_particles(screen, particles)
     draw_hud(screen, font_small, save, score, character, mode, time_left)
+
+
+# ── Transitions ───────────────────────────────────────────────────────────────
+
+class Transition:
+    def __init__(self):
+        self.alpha = 0
+        self.dir = 0
+        self.target = None
+
+    def begin(self, target):
+        self.alpha = 0
+        self.dir = 1
+        self.target = target
+
+    def update(self):
+        if self.dir != 0:
+            self.alpha = max(0, min(255, self.alpha + self.dir * 12))
+            if self.alpha >= 255:
+                self.dir = -1
+                return self.target
+            elif self.alpha <= 0 and self.dir == -1:
+                self.dir = 0
+        return None
+
+    def draw(self, screen):
+        if self.dir != 0 or self.alpha > 0:
+            ov = pygame.Surface((W, H))
+            ov.set_alpha(self.alpha)
+            ov.fill((0, 0, 0))
+            screen.blit(ov, (0, 0))
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -732,9 +773,9 @@ def main():
     pygame.display.set_caption("Mammoth")
     clock = pygame.time.Clock()
 
-    font_big   = pygame.font.SysFont("Arial", 56, bold=True)
-    font_med   = pygame.font.SysFont("Arial", 30)
-    font_small = pygame.font.SysFont("Arial", 20)
+    font_big   = pygame.font.SysFont("Arial", 64, bold=True)
+    font_med   = pygame.font.SysFont("Arial", 34)
+    font_small = pygame.font.SysFont("Arial", 23)
     fonts = (font_big, font_med, font_small)
 
     sounds    = init_sounds()
@@ -751,6 +792,14 @@ def main():
     state       = "menu"
     time_left   = float(TIME_ATTACK_SECS)
     last_tick   = pygame.time.get_ticks()
+    last_logic_ms = 0
+
+    # Smooth movement variables
+    prev_snake = []
+    move_t = 1.0
+
+    # Transition system
+    transition = Transition()
 
     while True:
         events = pygame.event.get()
@@ -765,53 +814,45 @@ def main():
                     state = "paused"
                     play_snd(sounds, "pause", save)
                 elif state == "paused":
-                    state = "menu"
+                    transition.begin("menu")
                     write_save(save)
                 elif state == "dead":
-                    state = "menu"
+                    transition.begin("menu")
                     write_save(save)
-                elif state in ("settings", "char_select", "mode_select"):
-                    state = "menu"
+                elif state in ("settings", "mode_select"):
+                    transition.begin("menu")
                 elif state == "menu":
                     write_save(save)
                     pygame.quit()
                     sys.exit()
 
-        # ── Menu ──────────────────────────────────────────────────────────
+        # ── Menu (integrated character selection) ────────────────────────
         if state == "menu":
-            btn = draw_menu(screen, fonts, save, food_surfs[character])
+            btn = draw_menu(screen, fonts, save, food_surfs, body_surfs, character)
             for event in events:
-                if was_clicked(btn["play"], event):
-                    play_snd(sounds, "click", save)
-                    state = "char_select"
-                elif was_clicked(btn["settings"], event):
-                    play_snd(sounds, "click", save)
-                    state = "settings"
-                elif was_clicked(btn["quit"], event):
-                    write_save(save)
-                    pygame.quit()
-                    sys.exit()
-
-        # ── Character select ───────────────────────────────────────────────
-        elif state == "char_select":
-            btn = draw_char_select(screen, fonts, save, food_surfs, body_surfs)
-            for event in events:
+                # Character card clicks
                 for char in CHARACTERS:
-                    if was_clicked(btn[char], event):
+                    if was_clicked(btn.get(f"char_{char}", pygame.Rect(0,0,0,0)), event):
                         play_snd(sounds, "click", save)
                         character = char
                         save["last_character"] = char
-                        state = "mode_select"
-                if was_clicked(btn["back"], event):
+                if was_clicked(btn.get("play", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save)
-                    state = "menu"
+                    transition.begin("mode_select")
+                elif was_clicked(btn.get("settings", pygame.Rect(0,0,0,0)), event):
+                    play_snd(sounds, "click", save)
+                    transition.begin("settings")
+                elif was_clicked(btn.get("quit", pygame.Rect(0,0,0,0)), event):
+                    write_save(save)
+                    pygame.quit()
+                    sys.exit()
 
         # ── Mode select ────────────────────────────────────────────────────
         elif state == "mode_select":
             btn = draw_mode_select(screen, fonts, save)
             for event in events:
                 for m in ["classic", "timeattack", "zen", "obstacles"]:
-                    if was_clicked(btn[m], event):
+                    if was_clicked(btn.get(m, pygame.Rect(0,0,0,0)), event):
                         play_snd(sounds, "click", save)
                         mode = m
                         save["last_mode"] = m
@@ -819,43 +860,46 @@ def main():
                         pending_dir = direction
                         particles   = []
                         time_left   = float(TIME_ATTACK_SECS)
-                        last_tick   = pygame.time.get_ticks()
-                        state       = "playing"
-                if was_clicked(btn["back"], event):
+                        last_logic_ms = pygame.time.get_ticks()
+                        prev_snake = []
+                        move_t = 1.0
+                        transition.begin("playing")
+                if was_clicked(btn.get("back", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save)
-                    state = "char_select"
+                    transition.begin("menu")
 
         # ── Settings ──────────────────────────────────────────────────────
         elif state == "settings":
             btn = draw_settings(screen, fonts, save)
             for event in events:
-                if was_clicked(btn["lang_de"], event):
+                if was_clicked(btn.get("lang_de", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save); save["language"] = "de"
-                elif was_clicked(btn["lang_en"], event):
+                elif was_clicked(btn.get("lang_en", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save); save["language"] = "en"
-                elif was_clicked(btn["speed_slow"], event):
+                elif was_clicked(btn.get("speed_slow", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save); save["speed"] = "slow"
-                elif was_clicked(btn["speed_normal"], event):
+                elif was_clicked(btn.get("speed_normal", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save); save["speed"] = "normal"
-                elif was_clicked(btn["speed_fast"], event):
+                elif was_clicked(btn.get("speed_fast", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save); save["speed"] = "fast"
-                elif was_clicked(btn["grid_on"], event):
+                elif was_clicked(btn.get("grid_on", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save); save["show_grid"] = True
-                elif was_clicked(btn["grid_off"], event):
+                elif was_clicked(btn.get("grid_off", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save); save["show_grid"] = False
-                elif was_clicked(btn["sound_on"], event):
+                elif was_clicked(btn.get("sound_on", pygame.Rect(0,0,0,0)), event):
                     save["sound"] = True
-                elif was_clicked(btn["sound_off"], event):
+                elif was_clicked(btn.get("sound_off", pygame.Rect(0,0,0,0)), event):
                     save["sound"] = False
-                elif was_clicked(btn["back"], event):
+                elif was_clicked(btn.get("back", pygame.Rect(0,0,0,0)), event):
                     play_snd(sounds, "click", save)
                     write_save(save)
-                    state = "menu"
+                    transition.begin("menu")
 
         # ── Paused ────────────────────────────────────────────────────────
         elif state == "paused":
             draw_game_scene(screen, fonts, save, snake, direction, food, score,
-                            character, mode, time_left, obstacles, food_surfs, body_surfs, particles)
+                            character, mode, time_left, obstacles, food_surfs, body_surfs, particles,
+                            prev_snake, move_t)
             ov = pygame.Surface((W, GH), pygame.SRCALPHA)
             ov.fill((0, 0, 0, 160))
             screen.blit(ov, (0, 0))
@@ -866,55 +910,63 @@ def main():
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                     play_snd(sounds, "pause", save)
                     state = "playing"
-                    last_tick = pygame.time.get_ticks()
+                    last_logic_ms = pygame.time.get_ticks()
 
         # ── Playing / Dead ────────────────────────────────────────────────
         else:
             s = T[save["language"]]
 
             if state == "playing":
-                # Time attack countdown
-                if mode == "timeattack":
-                    now = pygame.time.get_ticks()
-                    time_left -= (now - last_tick) / 1000.0
-                    last_tick = now
-                    if time_left <= 0:
-                        time_left = 0
-                        key = hs_key(character, mode)
-                        if score > save["high_scores"].get(key, 0):
-                            save["high_scores"][key] = score
-                            write_save(save)
-                        play_snd(sounds, "dead", save)
-                        state = "dead"
-                else:
-                    last_tick = pygame.time.get_ticks()
+                # Separate logic tick from render tick
+                now_ms = pygame.time.get_ticks()
+                logic_interval = 1000 / get_speed(score, save["speed"])
+                if now_ms - last_logic_ms >= logic_interval:
+                    prev_snake = list(snake)
+                    move_t = 0.0
 
-                if state == "playing":
-                    direction = pending_dir
-                    hx, hy = snake[0]
-                    dx, dy = direction
-                    new_head = (hx+dx, hy+dy)
+                    # Time attack countdown
+                    if mode == "timeattack":
+                        time_left -= (now_ms - last_logic_ms) / 1000.0
+                        if time_left <= 0:
+                            time_left = 0
+                            key = hs_key(character, mode)
+                            if score > save["high_scores"].get(key, 0):
+                                save["high_scores"][key] = score
+                                write_save(save)
+                            play_snd(sounds, "dead", save)
+                            state = "dead"
 
-                    if mode == "zen":
-                        new_head = (new_head[0] % COLS, new_head[1] % ROWS)
+                    if state == "playing":
+                        direction = pending_dir
+                        hx, hy = snake[0]
+                        dx, dy = direction
+                        new_head = (hx+dx, hy+dy)
 
-                    wall_hit = not (0 <= new_head[0] < COLS and 0 <= new_head[1] < ROWS)
-                    if wall_hit or new_head in obstacles or new_head in snake:
-                        key = hs_key(character, mode)
-                        if score > save["high_scores"].get(key, 0):
-                            save["high_scores"][key] = score
-                            write_save(save)
-                        play_snd(sounds, "dead", save)
-                        state = "dead"
-                    else:
-                        snake.insert(0, new_head)
-                        if new_head == food:
-                            score += 1
-                            particles += emit_particles(food, food_color(character))
-                            play_snd(sounds, "eat", save)
-                            food = random_food(snake, obstacles)
+                        if mode == "zen":
+                            new_head = (new_head[0] % COLS, new_head[1] % ROWS)
+
+                        wall_hit = not (0 <= new_head[0] < COLS and 0 <= new_head[1] < ROWS)
+                        if wall_hit or new_head in obstacles or new_head in snake:
+                            key = hs_key(character, mode)
+                            if score > save["high_scores"].get(key, 0):
+                                save["high_scores"][key] = score
+                                write_save(save)
+                            play_snd(sounds, "dead", save)
+                            state = "dead"
                         else:
-                            snake.pop()
+                            snake.insert(0, new_head)
+                            if new_head == food:
+                                score += 1
+                                particles += emit_particles(food, food_color(character))
+                                play_snd(sounds, "eat", save)
+                                food = random_food(snake, obstacles)
+                            else:
+                                snake.pop()
+
+                    last_logic_ms = now_ms
+                else:
+                    # Interpolate between logic ticks
+                    move_t = min(1.0, (now_ms - last_logic_ms) / logic_interval)
 
             # Input
             for event in events:
@@ -926,7 +978,9 @@ def main():
                             pending_dir = direction
                             particles   = []
                             time_left   = float(TIME_ATTACK_SECS)
-                            last_tick   = pygame.time.get_ticks()
+                            last_logic_ms = pygame.time.get_ticks()
+                            prev_snake = []
+                            move_t = 1.0
                             state       = "playing"
                     elif state == "playing":
                         if event.key == pygame.K_p:
@@ -944,7 +998,8 @@ def main():
 
             update_particles(particles)
             draw_game_scene(screen, fonts, save, snake, direction, food, score,
-                            character, mode, time_left, obstacles, food_surfs, body_surfs, particles)
+                            character, mode, time_left, obstacles, food_surfs, body_surfs, particles,
+                            prev_snake, move_t)
 
             if state == "dead":
                 dark_overlay(screen)
@@ -953,8 +1008,16 @@ def main():
                 draw_centered(screen, font_med,   s["score_msg"].format(score), GH//2+10)
                 draw_centered(screen, font_small, s["restart_hint"],           GH//2+55)
 
+        # Update transitions
+        next_state = transition.update()
+        if next_state:
+            state = next_state
+
+        # Draw fade transition overlay
+        transition.draw(screen)
+
         pygame.display.flip()
-        clock.tick(get_speed(score, save["speed"]) if state == "playing" else 30)
+        clock.tick(RENDER_FPS)
 
 
 if __name__ == "__main__":
