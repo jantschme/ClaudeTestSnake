@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-"Mammoth" – a Snake game clone in Python/Pygame where the player controls a mammoth collecting pink lollipops.
+"Mammoth" – a Snake game in Python/Pygame. Three playable characters (Mammoth, Bunny, Bear), each with a unique food item and head art. Four game modes (Classic, Time Attack, Zen, Obstacles). Particle effects, procedural sound, pause support, and persistent save (settings + per-character/mode high scores).
 
 ## Running & Building
 
@@ -15,7 +15,7 @@ python3 snake.py
 
 **Build macOS app bundle:**
 ```bash
-rm -rf dist build && python3 -m PyInstaller --windowed --onedir --name "Mammoth" snake.py
+rm -rf dist build && python3 -m PyInstaller Mammoth.spec
 ```
 
 **Sign and run the app (macOS):**
@@ -31,22 +31,46 @@ pip3 install pygame
 
 ## Architecture
 
-All game code lives in a single file: `snake.py` (311 lines).
+All game code lives in a single file: `snake.py` (~960 lines).
 
-**Structure within `snake.py`:**
+**File structure:**
 
 | Lines | Section |
 |-------|---------|
-| 7–37 | Constants: grid (20×16 cells, 44px each), display size (880×854), FPS, direction vectors, color palette |
-| 40–162 | Drawing helpers: `fcirc()` (anti-aliased circles), `fur_strokes()` (seeded procedural fur), `make_body_surf()`, `make_lollipop_surf()`, `draw_head()` |
-| 186–204 | Game logic: `random_food()`, `new_game()`, `get_speed()` (dynamic FPS scaling with score) |
-| 208–307 | Main loop: event handling, state machine (`"start"` → `"playing"` → `"dead"`), collision detection, rendering pipeline, high-score persistence |
+| 1–115 | Config, colors, CHARACTERS/CHAR_FOOD dicts, translations (DE/EN) |
+| 116–150 | Persistence: `load_save()`, `write_save()` → `~/Library/Application Support/Mammoth/save.json` |
+| 151–185 | Sound: `init_sounds()`, `play_snd()` – procedural tones via `array` module |
+| 186–220 | Drawing primitives: `fcirc()`, `fur_strokes()` |
+| 221–300 | Animal heads: `draw_head_mammoth()`, `draw_head_bunny()`, `draw_head_bear()`, dispatcher `draw_head()` |
+| 301–380 | Food surfaces: `make_lolly_surf()`, `make_carrot_surf()`, `make_honeypot_surf()`, `make_food_surf()` |
+| 381–420 | Particles: `Particle`, `emit_particles()`, `update_particles()`, `draw_particles()` |
+| 421–470 | UI helpers: `draw_grid()`, `draw_centered()`, `dark_overlay()`, `make_rect()`, `draw_btn()`, `was_clicked()` |
+| 471–510 | Game logic: `random_food()`, `random_obstacles()`, `new_game()`, `get_speed()` |
+| 511–530 | HUD: `draw_hud()`, `draw_game_scene()` |
+| 531–700 | Screen renderers: `draw_menu()`, `draw_char_select()`, `draw_mode_select()`, `draw_settings()` |
+| 701–961 | Main loop: state machine, events, rendering |
 
-**Rendering pipeline per frame:** background → grid → body segments → head → food → HUD → state overlays.
+**State machine:**
+```
+menu → char_select → mode_select → playing ⇄ paused
+                                          ↓
+                                        dead → menu (ESC) / playing (SPACE)
+menu → settings → menu
+```
 
-The mammoth head (`draw_head()`) is procedurally rendered each frame with directional tusks and an animated trunk wobble. Body segments are pre-rendered onto a surface (`make_body_surf()`).
+**Persistence:** `save` dict holds `high_scores` (keyed `"{character}_{mode}"`), `language`, `speed`, `show_grid`, `sound`, `last_character`, `last_mode`. Written on settings-back, ESC-to-menu, quit, and new high score.
 
-**Controls:** Arrow keys / WASD to move, SPACE/ENTER to start, ESC to quit. UI text is in German ("AUSGESTORBEN" = game over).
+**Game modes:** `classic` (standard), `timeattack` (60s countdown), `zen` (wrap walls), `obstacles` (random blocks).
+
+**Characters:** `mammoth` (lolly), `bunny` (carrot), `bear` (honey).
+
+**Controls:**
+- Arrow keys / WASD to move
+- P or ESC (while playing) → pause; P resumes, ESC → menu
+- SPACE/ENTER to restart after death
+- Mouse clicks on all buttons
+
+**App Store prep:** `Mammoth.spec` sets `bundle_identifier='com.mammoth.game'`, `version='1.0.0'`, `LSMinimumSystemVersion='11.0'`, `NSHighResolutionCapable`. `Mammoth.entitlements` enables App Sandbox + file access.
 
 ## Git Workflow
 

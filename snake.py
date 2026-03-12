@@ -3,6 +3,9 @@ import pygame.gfxdraw
 import random
 import sys
 import math
+import json
+import array
+import pathlib
 
 # ── Config ────────────────────────────────────────────────────────────────────
 CELL  = 44
@@ -12,82 +15,213 @@ W     = COLS * CELL          # 880
 GH    = ROWS * CELL          # 704
 H     = GH + 54              # 758
 FPS   = 10
+TIME_ATTACK_SECS = 60
 
 # ── Colors ────────────────────────────────────────────────────────────────────
-BG       = ( 20,  36,  20)
-GRID_C   = ( 30,  48,  30)
-MB       = (112,  74,  36)
-MD       = ( 78,  50,  20)
-MF       = (162, 118,  64)
-TUSK_C   = (252, 246, 200)
-SKIN_C   = ( 92,  58,  24)
-EYE_W    = (242, 230, 210)
-EYE_P    = ( 15,  10,   4)
-PINK     = (255,  88, 165)
-PINK_H   = (255, 205, 232)
-PINK_D   = (200,  40, 120)
-STICK_C  = (200, 168, 128)
-TEXT_C   = (228, 232, 220)
-HUD_C    = ( 12,  22,  12)
-BTN_BG   = ( 35,  60,  35)
-BTN_HOV  = ( 55,  90,  55)
-BTN_SEL  = ( 45, 105,  38)
+BG         = ( 20,  36,  20)
+GRID_C     = ( 30,  48,  30)
+MB         = (112,  74,  36)
+MD         = ( 78,  50,  20)
+MF         = (162, 118,  64)
+TUSK_C     = (252, 246, 200)
+SKIN_C     = ( 92,  58,  24)
+EYE_W      = (242, 230, 210)
+EYE_P      = ( 15,  10,   4)
+PINK       = (255,  88, 165)
+PINK_H     = (255, 205, 232)
+PINK_D     = (200,  40, 120)
+STICK_C    = (200, 168, 128)
+TEXT_C     = (228, 232, 220)
+HUD_C      = ( 12,  22,  12)
+BTN_BG     = ( 35,  60,  35)
+BTN_HOV    = ( 55,  90,  55)
+BTN_SEL    = ( 45, 105,  38)
+OBSTACLE_C = ( 80,  50,  20)
+BUNNY_BODY = (200, 195, 195)
+BUNNY_EAR  = (230, 150, 160)
+BUNNY_NOSE = (255, 150, 160)
+BEAR_BODY  = (160, 100,  50)
+BEAR_LIGHT = (200, 150, 100)
+BEAR_NOSE  = ( 60,  40,  20)
+CARROT_C   = (255, 130,  30)
+LEAF_C     = ( 50, 180,  50)
+HONEY_C    = (240, 200,  40)
+POT_C      = (180, 120,  60)
 
 RIGHT = ( 1,  0)
 LEFT  = (-1,  0)
 UP    = ( 0, -1)
 DOWN  = ( 0,  1)
 OPPOSITES = {UP: DOWN, DOWN: UP, LEFT: RIGHT, RIGHT: LEFT}
-
 SPEED_MULT = {"slow": 0.6, "normal": 1.0, "fast": 1.6}
+CHARACTERS = ["mammoth", "bunny", "bear"]
+CHAR_FOOD  = {"mammoth": "lolly", "bunny": "carrot", "bear": "honey"}
+
+# ── Save path ─────────────────────────────────────────────────────────────────
+SAVE_DIR  = pathlib.Path.home() / "Library" / "Application Support" / "Mammoth"
+SAVE_FILE = SAVE_DIR / "save.json"
 
 # ── Translations ──────────────────────────────────────────────────────────────
 T = {
     "de": {
-        "play":           "SPIELEN",
-        "settings_btn":   "EINSTELLUNGEN",
-        "quit":           "BEENDEN",
-        "language_label": "Sprache",
-        "speed_label":    "Geschwindigkeit",
-        "grid_label":     "Raster",
-        "back":           "ZURÜCK",
-        "slow":           "LANGSAM",
-        "normal":         "NORMAL",
-        "fast":           "SCHNELL",
-        "on":             "AN",
-        "off":            "AUS",
-        "game_over":      "AUSGESTORBEN",
-        "score_msg":      "Lollies gegessen: {}",
-        "restart_hint":   "Leertaste für neues Spiel",
-        "lollies":        "Lollies",
-        "record":         "Rekord",
+        "play":              "SPIELEN",
+        "settings_btn":      "EINSTELLUNGEN",
+        "quit":              "BEENDEN",
+        "language_label":    "Sprache",
+        "speed_label":       "Geschwindigkeit",
+        "grid_label":        "Raster",
+        "sound_label":       "Sound",
+        "back":              "ZURÜCK",
+        "slow":              "LANGSAM",
+        "normal":            "NORMAL",
+        "fast":              "SCHNELL",
+        "on":                "AN",
+        "off":               "AUS",
+        "game_over":         "AUSGESTORBEN",
+        "time_up":           "ZEIT ABGELAUFEN",
+        "score_msg":         "Gegessen: {}",
+        "restart_hint":      "LEERTASTE = Neu  |  ESC = Menü",
+        "lollies":           "Punkte",
+        "record":            "Rekord",
+        "char_select":       "CHARAKTER WÄHLEN",
+        "mode_select":       "SPIELMODUS",
+        "mode_classic":      "KLASSISCH",
+        "mode_timeattack":   "ZEITANGRIFF",
+        "mode_zen":          "ZEN",
+        "mode_obstacles":    "HINDERNISSE",
+        "mode_classic_d":    "Standard Snake",
+        "mode_timeattack_d": "60 Sek – max Punkte",
+        "mode_zen_d":        "Wände = Teleport",
+        "mode_obstacles_d":  "Zufällige Blöcke",
+        "pause":             "PAUSE",
+        "pause_hint":        "P = Weiter  |  ESC = Menü",
+        "time":              "Zeit",
+        "char_mammoth":      "Mammuth",
+        "char_bunny":        "Hase",
+        "char_bear":         "Bär",
     },
     "en": {
-        "play":           "PLAY",
-        "settings_btn":   "SETTINGS",
-        "quit":           "QUIT",
-        "language_label": "Language",
-        "speed_label":    "Speed",
-        "grid_label":     "Grid",
-        "back":           "BACK",
-        "slow":           "SLOW",
-        "normal":         "NORMAL",
-        "fast":           "FAST",
-        "on":             "ON",
-        "off":            "OFF",
-        "game_over":      "EXTINCT",
-        "score_msg":      "Lollies eaten: {}",
-        "restart_hint":   "Space for new game",
-        "lollies":        "Lollies",
-        "record":         "Record",
+        "play":              "PLAY",
+        "settings_btn":      "SETTINGS",
+        "quit":              "QUIT",
+        "language_label":    "Language",
+        "speed_label":       "Speed",
+        "grid_label":        "Grid",
+        "sound_label":       "Sound",
+        "back":              "BACK",
+        "slow":              "SLOW",
+        "normal":            "NORMAL",
+        "fast":              "FAST",
+        "on":                "ON",
+        "off":               "OFF",
+        "game_over":         "EXTINCT",
+        "time_up":           "TIME'S UP",
+        "score_msg":         "Eaten: {}",
+        "restart_hint":      "SPACE = New Game  |  ESC = Menu",
+        "lollies":           "Score",
+        "record":            "Record",
+        "char_select":       "CHOOSE CHARACTER",
+        "mode_select":       "GAME MODE",
+        "mode_classic":      "CLASSIC",
+        "mode_timeattack":   "TIME ATTACK",
+        "mode_zen":          "ZEN",
+        "mode_obstacles":    "OBSTACLES",
+        "mode_classic_d":    "Standard Snake",
+        "mode_timeattack_d": "60 sec – max score",
+        "mode_zen_d":        "Walls = Teleport",
+        "mode_obstacles_d":  "Random blocks",
+        "pause":             "PAUSE",
+        "pause_hint":        "P = Resume  |  ESC = Menu",
+        "time":              "Time",
+        "char_mammoth":      "Mammoth",
+        "char_bunny":        "Bunny",
+        "char_bear":         "Bear",
     },
 }
+
+
+# ── Persistence ───────────────────────────────────────────────────────────────
+
+def load_save():
+    defaults = {
+        "high_scores":    {},
+        "language":       "de",
+        "speed":          "normal",
+        "show_grid":      True,
+        "sound":          True,
+        "last_character": "mammoth",
+        "last_mode":      "classic",
+    }
+    try:
+        if SAVE_FILE.exists():
+            with open(SAVE_FILE, "r") as f:
+                data = json.load(f)
+            defaults.update(data)
+    except Exception:
+        pass
+    return defaults
+
+
+def write_save(save):
+    try:
+        SAVE_DIR.mkdir(parents=True, exist_ok=True)
+        with open(SAVE_FILE, "w") as f:
+            json.dump(save, f, indent=2)
+    except Exception:
+        pass
+
+
+def hs_key(character, mode):
+    return f"{character}_{mode}"
+
+
+# ── Sound ─────────────────────────────────────────────────────────────────────
+
+def _gen_tone(freq, duration, volume=0.3, sr=22050):
+    n = int(sr * duration)
+    buf = array.array("h", [0] * n)
+    mv = int(32767 * volume)
+    for i in range(n):
+        fade = min(1.0, (n - i) / max(1, n * 0.1))
+        buf[i] = int(mv * math.sin(2 * math.pi * freq * i / sr) * fade)
+    return pygame.mixer.Sound(buffer=buf)
+
+
+def _gen_sweep(f0, f1, duration, volume=0.3, sr=22050):
+    n = int(sr * duration)
+    buf = array.array("h", [0] * n)
+    mv = int(32767 * volume)
+    for i in range(n):
+        freq = f0 + (f1 - f0) * i / n
+        fade = min(1.0, (n - i) / max(1, n * 0.1))
+        buf[i] = int(mv * math.sin(2 * math.pi * freq * i / sr) * fade)
+    return pygame.mixer.Sound(buffer=buf)
+
+
+def init_sounds():
+    sounds = {}
+    try:
+        pygame.mixer.init(frequency=22050, size=-16, channels=1, buffer=512)
+        sounds["eat"]   = _gen_tone(600, 0.08, 0.4)
+        sounds["dead"]  = _gen_sweep(300, 80, 0.35, 0.35)
+        sounds["click"] = _gen_tone(800, 0.05, 0.25)
+        sounds["pause"] = _gen_tone(400, 0.06, 0.2)
+    except Exception:
+        pass
+    return sounds
+
+
+def play_snd(sounds, key, save):
+    if save.get("sound") and key in sounds:
+        try:
+            sounds[key].play()
+        except Exception:
+            pass
 
 
 # ── Drawing helpers ───────────────────────────────────────────────────────────
 
 def fcirc(surf, color, cx, cy, r):
-    """Anti-aliased filled circle."""
     cx, cy, r = int(cx), int(cy), int(r)
     if r <= 0:
         return
@@ -108,107 +242,262 @@ def fur_strokes(surf, ox, oy, seed, count=16):
         pygame.draw.line(surf, MF, (fx, fy), (ex, ey), 2)
 
 
-# ── Precomputed surfaces ──────────────────────────────────────────────────────
+# ── Body surfaces ─────────────────────────────────────────────────────────────
 
-def make_body_surf():
+def make_body_surf(char="mammoth"):
     c = CELL
     s = pygame.Surface((c, c), pygame.SRCALPHA)
     r = c // 4
-    pygame.draw.rect(s, MB, (2, 2, c - 4, c - 4), border_radius=r)
-    pygame.draw.rect(s, MD, (c // 3, c // 3, c * 2 // 3 - 4, c * 2 // 3 - 4), border_radius=r // 2)
-    fur_strokes(s, 0, 0, seed=42)
+    if char == "mammoth":
+        pygame.draw.rect(s, MB, (2, 2, c-4, c-4), border_radius=r)
+        pygame.draw.rect(s, MD, (c//3, c//3, c*2//3-4, c*2//3-4), border_radius=r//2)
+        fur_strokes(s, 0, 0, seed=42)
+    elif char == "bunny":
+        pygame.draw.rect(s, BUNNY_BODY, (2, 2, c-4, c-4), border_radius=r)
+        pygame.draw.rect(s, (170,165,165), (c//3, c//3, c*2//3-4, c*2//3-4), border_radius=r//2)
+    else:  # bear
+        pygame.draw.rect(s, BEAR_BODY, (2, 2, c-4, c-4), border_radius=r)
+        pygame.draw.rect(s, (130,80,30), (c//3, c//3, c*2//3-4, c*2//3-4), border_radius=r//2)
+        fur_strokes(s, 0, 0, seed=99)
     return s
 
 
-def make_lollipop_surf():
+# ── Animal heads ──────────────────────────────────────────────────────────────
+
+def draw_head_mammoth(screen, gx, gy, direction):
     c  = CELL
-    s  = pygame.Surface((c, c), pygame.SRCALPHA)
-    cr = c // 3
-    cx = c // 2
-    cy = c // 3
-    pygame.draw.line(s, STICK_C, (cx, cy + cr - 1), (cx, c - 3), 4)
-    pygame.draw.line(s, (230, 200, 158), (cx - 1, cy + cr - 1), (cx - 1, c - 3), 1)
-    fcirc(s, PINK_D, cx + 3, cy + 3, cr)
-    fcirc(s, PINK, cx, cy, cr)
-    pygame.draw.arc(s, (255, 255, 255),
-                    (cx - cr + 5, cy - cr + 5, (cr - 5) * 2, (cr - 5) * 2),
-                    math.pi * 0.3, math.pi * 1.25, 3)
-    pygame.draw.arc(s, (255, 255, 255),
-                    (cx - cr // 2 + 3, cy - cr // 2 + 3, (cr // 2 - 3) * 2, (cr // 2 - 3) * 2),
-                    math.pi * 1.1, math.pi * 2.1, 2)
-    fcirc(s, PINK_H, cx - cr // 3, cy - cr // 3, cr // 3)
-    return s
-
-
-# ── Mammoth head ──────────────────────────────────────────────────────────────
-
-def draw_head(screen, gx, gy, direction):
-    c  = CELL
-    px = gx * c
-    py = gy * c
-    cx = px + c // 2
-    cy = py + c // 2
-    dx, dy    = direction
-    perp_x    = -dy
-    perp_y    =  dx
+    px, py = gx * c, gy * c
+    cx, cy = px + c//2, py + c//2
+    dx, dy = direction
+    px2, py2 = -dy, dx  # perp
 
     r = c // 4
-    pygame.draw.rect(screen, MB, (px + 2, py + 2, c - 4, c - 4), border_radius=r)
-    pygame.draw.rect(screen, MD, (px + c // 3, py + c // 3,
-                                   c * 2 // 3 - 4, c * 2 // 3 - 4), border_radius=r // 2)
+    pygame.draw.rect(screen, MB, (px+2, py+2, c-4, c-4), border_radius=r)
+    pygame.draw.rect(screen, MD, (px+c//3, py+c//3, c*2//3-4, c*2//3-4), border_radius=r//2)
     fur_strokes(screen, px, py, seed=11, count=12)
 
-    ear_cx = int(cx - dx * c // 4 + perp_x * c // 3)
-    ear_cy = int(cy - dy * c // 4 + perp_y * c // 3)
-    pygame.draw.ellipse(screen, MB,
-                        (ear_cx - c // 6, ear_cy - c // 6, c // 3, c // 3))
-    pygame.draw.ellipse(screen, SKIN_C,
-                        (ear_cx - c // 10, ear_cy - c // 10, c // 5, c // 5))
+    ear_cx = int(cx - dx*c//4 + px2*c//3)
+    ear_cy = int(cy - dy*c//4 + py2*c//3)
+    pygame.draw.ellipse(screen, MB, (ear_cx-c//6, ear_cy-c//6, c//3, c//3))
+    pygame.draw.ellipse(screen, SKIN_C, (ear_cx-c//10, ear_cy-c//10, c//5, c//5))
 
-    e_cx = int(cx + dx * c // 5 - perp_x * c // 6)
-    e_cy = int(cy + dy * c // 5 - perp_y * c // 6)
-    fcirc(screen, EYE_W,           e_cx,          e_cy,          c // 8)
-    fcirc(screen, EYE_P,           e_cx + dx + 1, e_cy + dy + 1, c // 13)
-    fcirc(screen, (255, 255, 255), e_cx + 2,      e_cy - 2,      max(1, c // 22))
+    ecx = int(cx + dx*c//5 - px2*c//6)
+    ecy = int(cy + dy*c//5 - py2*c//6)
+    fcirc(screen, EYE_W, ecx, ecy, c//8)
+    fcirc(screen, EYE_P, ecx+dx+1, ecy+dy+1, c//13)
+    fcirc(screen, (255,255,255), ecx+2, ecy-2, max(1, c//22))
 
     for sign in (1, -1):
-        sx = cx + dx * c // 3 + sign * perp_x * c // 8
-        sy = cy + dy * c // 3 + sign * perp_y * c // 8
+        sx = cx + dx*c//3 + sign*px2*c//8
+        sy = cy + dy*c//3 + sign*py2*c//8
         pts = []
         for i in range(10):
-            t  = i / 9.0
-            tx = sx + dx * t * c * 0.65 + sign * perp_x * t * c * 0.50
-            ty = sy + dy * t * c * 0.65 + sign * perp_y * t * c * 0.50
-            pts.append((int(tx), int(ty)))
+            t = i / 9.0
+            pts.append((int(sx + dx*t*c*0.65 + sign*px2*t*c*0.50),
+                         int(sy + dy*t*c*0.65 + sign*py2*t*c*0.50)))
         pygame.draw.lines(screen, TUSK_C, False, pts, 4)
-        pygame.draw.lines(screen, (236, 224, 170), False, pts, 2)
-        fcirc(screen, (240, 232, 180), pts[-1][0], pts[-1][1], 3)
+        pygame.draw.lines(screen, (236,224,170), False, pts, 2)
+        fcirc(screen, (240,232,180), pts[-1][0], pts[-1][1], 3)
 
     trunk_pts = []
     for i in range(9):
-        t      = i / 8.0
-        wobble = math.sin(t * math.pi * 1.6) * c * 0.13 * (1 - t * 0.6)
-        tx     = cx + dx * (c // 2 + t * c * 0.58) + perp_x * wobble
-        ty     = cy + dy * (c // 2 + t * c * 0.58) + perp_y * wobble
-        trunk_pts.append((int(tx), int(ty)))
-    pygame.draw.lines(screen, SKIN_C, False, trunk_pts, max(4, c // 8))
-    fcirc(screen, (75, 45, 18),   trunk_pts[-1][0],     trunk_pts[-1][1],     c // 10)
-    fcirc(screen, (105, 66, 28),  trunk_pts[-1][0] - 1, trunk_pts[-1][1] - 1, c // 15)
+        t = i / 8.0
+        wobble = math.sin(t * math.pi * 1.6) * c * 0.13 * (1 - t*0.6)
+        trunk_pts.append((int(cx + dx*(c//2 + t*c*0.58) + px2*wobble),
+                           int(cy + dy*(c//2 + t*c*0.58) + py2*wobble)))
+    pygame.draw.lines(screen, SKIN_C, False, trunk_pts, max(4, c//8))
+    fcirc(screen, (75,45,18),  trunk_pts[-1][0],   trunk_pts[-1][1],   c//10)
+    fcirc(screen, (105,66,28), trunk_pts[-1][0]-1, trunk_pts[-1][1]-1, c//15)
+
+
+def draw_head_bunny(screen, gx, gy, direction):
+    c  = CELL
+    px, py = gx * c, gy * c
+    cx, cy = px + c//2, py + c//2
+    dx, dy = direction
+    px2, py2 = -dy, dx
+
+    fcirc(screen, BUNNY_BODY, cx, cy, c//3)
+
+    # Long ears extending backward
+    for sign in (1, -1):
+        bx = int(cx - dx*c//4 + sign*px2*c//5)
+        by = int(cy - dy*c//4 + sign*py2*c//5)
+        tx = int(bx - dx*c*0.6)
+        ty = int(by - dy*c*0.6)
+        pygame.draw.line(screen, BUNNY_BODY, (bx, by), (tx, ty), 8)
+        pygame.draw.line(screen, BUNNY_EAR,  (bx, by), (tx, ty), 4)
+
+    # Eye
+    ecx = int(cx + dx*c//5 - px2*c//7)
+    ecy = int(cy + dy*c//5 - py2*c//7)
+    fcirc(screen, EYE_W, ecx, ecy, c//9)
+    fcirc(screen, (180,50,80), ecx+dx, ecy+dy, c//14)
+    fcirc(screen, (255,255,255), ecx+2, ecy-2, max(1, c//22))
+
+    # Nose + whiskers
+    nx = int(cx + dx*c//2.8)
+    ny = int(cy + dy*c//2.8)
+    fcirc(screen, BUNNY_NOSE, nx, ny, c//9)
+    for sign in (1, -1):
+        wx = int(nx - dx*c//5 + sign*px2*c//3)
+        wy = int(ny - dy*c//5 + sign*py2*c//3)
+        pygame.draw.line(screen, (200,180,180), (nx, ny), (wx, wy), 1)
+
+
+def draw_head_bear(screen, gx, gy, direction):
+    c  = CELL
+    px, py = gx * c, gy * c
+    cx, cy = px + c//2, py + c//2
+    dx, dy = direction
+    px2, py2 = -dy, dx
+
+    fcirc(screen, BEAR_BODY, cx, cy, int(c*0.42))
+
+    # Round ears
+    for sign in (1, -1):
+        ecx = int(cx - dx*c//3 + sign*px2*c//3)
+        ecy = int(cy - dy*c//3 + sign*py2*c//3)
+        fcirc(screen, BEAR_BODY, ecx, ecy, c//6)
+        fcirc(screen, (130,70,30), ecx, ecy, c//10)
+
+    # Muzzle
+    mx = int(cx + dx*c//4)
+    my = int(cy + dy*c//4)
+    fcirc(screen, BEAR_LIGHT, mx, my, c//5)
+    fcirc(screen, BEAR_NOSE, int(cx+dx*c//2.5), int(cy+dy*c//2.5), c//10)
+
+    # Eyes (two)
+    for sign in (1, -1):
+        ecx = int(cx + dx*c//6 + sign*px2*c//5)
+        ecy = int(cy + dy*c//6 + sign*py2*c//5)
+        fcirc(screen, EYE_W, ecx, ecy, c//9)
+        fcirc(screen, EYE_P, ecx+dx, ecy+dy, c//14)
+        fcirc(screen, (255,255,255), ecx+2, ecy-2, max(1, c//22))
+
+
+def draw_head(screen, gx, gy, direction, character="mammoth"):
+    if character == "bunny":
+        draw_head_bunny(screen, gx, gy, direction)
+    elif character == "bear":
+        draw_head_bear(screen, gx, gy, direction)
+    else:
+        draw_head_mammoth(screen, gx, gy, direction)
+
+
+# ── Food surfaces ─────────────────────────────────────────────────────────────
+
+def make_lolly_surf():
+    c = CELL
+    s = pygame.Surface((c, c), pygame.SRCALPHA)
+    cr, cx, cy = c//3, c//2, c//3
+    pygame.draw.line(s, STICK_C, (cx, cy+cr-1), (cx, c-3), 4)
+    pygame.draw.line(s, (230,200,158), (cx-1, cy+cr-1), (cx-1, c-3), 1)
+    fcirc(s, PINK_D, cx+3, cy+3, cr)
+    fcirc(s, PINK, cx, cy, cr)
+    pygame.draw.arc(s, (255,255,255), (cx-cr+5, cy-cr+5, (cr-5)*2, (cr-5)*2),
+                    math.pi*0.3, math.pi*1.25, 3)
+    fcirc(s, PINK_H, cx-cr//3, cy-cr//3, cr//3)
+    return s
+
+
+def make_carrot_surf():
+    c = CELL
+    s = pygame.Surface((c, c), pygame.SRCALPHA)
+    cx = c // 2
+    pts = [(cx-c//4, 8), (cx+c//4, 8), (cx, c-6)]
+    pygame.draw.polygon(s, CARROT_C, pts)
+    for i in range(2, c-10, 7):
+        lx = max(2, int(c//4 * (1 - i/c)))
+        pygame.draw.line(s, (220,100,20), (cx-lx, 8+i), (cx+lx, 8+i), 1)
+    for sign in (-1, 0, 1):
+        pygame.draw.line(s, LEAF_C, (cx+sign*4, 8), (cx+sign*10, -2), 3)
+    return s
+
+
+def make_honeypot_surf():
+    c = CELL
+    s = pygame.Surface((c, c), pygame.SRCALPHA)
+    cx = c // 2
+    pot = pygame.Rect(cx-c//3, c//3, c*2//3, c*2//3)
+    pygame.draw.ellipse(s, POT_C, pot)
+    pygame.draw.ellipse(s, (150,90,40), pot, 2)
+    honey = pygame.Rect(cx-c//4, c//3-2, c//2, c//5)
+    pygame.draw.ellipse(s, HONEY_C, honey)
+    dx = cx + c//8
+    pygame.draw.line(s, HONEY_C, (dx, c//3+c//5), (dx, c//3+c//5+8), 4)
+    fcirc(s, HONEY_C, dx, c//3+c//5+8, 4)
+    pygame.draw.rect(s, (150,90,40), (cx-c//3, c//3-4, c*2//3, 6), border_radius=3)
+    return s
+
+
+def make_food_surf(character):
+    food = CHAR_FOOD.get(character, "lolly")
+    if food == "carrot":
+        return make_carrot_surf()
+    elif food == "honey":
+        return make_honeypot_surf()
+    return make_lolly_surf()
+
+
+def food_color(character):
+    food = CHAR_FOOD.get(character, "lolly")
+    return CARROT_C if food == "carrot" else HONEY_C if food == "honey" else PINK
+
+
+# ── Particles ─────────────────────────────────────────────────────────────────
+
+class Particle:
+    def __init__(self, x, y, color):
+        angle = random.uniform(0, math.pi*2)
+        speed = random.uniform(1.5, 4.5)
+        self.x, self.y   = float(x), float(y)
+        self.vx, self.vy = math.cos(angle)*speed, math.sin(angle)*speed - 1.0
+        self.color        = color
+        self.lifetime     = random.randint(14, 24)
+        self.age          = 0
+        self.size         = random.randint(3, 6)
+
+    @property
+    def alive(self):
+        return self.age < self.lifetime
+
+
+def emit_particles(pos, color, count=14):
+    px = pos[0]*CELL + CELL//2
+    py = pos[1]*CELL + CELL//2
+    return [Particle(px, py, color) for _ in range(count)]
+
+
+def update_particles(particles):
+    for p in particles:
+        p.x += p.vx; p.y += p.vy
+        p.vy += 0.18
+        p.age += 1
+    particles[:] = [p for p in particles if p.alive]
+
+
+def draw_particles(screen, particles):
+    for p in particles:
+        alpha = max(0.0, 1.0 - p.age / p.lifetime)
+        size  = max(1, int(p.size * alpha))
+        surf  = pygame.Surface((size*2+2, size*2+2), pygame.SRCALPHA)
+        fcirc(surf, (*p.color, int(255*alpha)), size+1, size+1, size)
+        screen.blit(surf, (int(p.x)-size-1, int(p.y)-size-1))
 
 
 # ── Misc draw ─────────────────────────────────────────────────────────────────
 
 def draw_grid(screen):
-    for x in range(0, W + 1, CELL):
+    for x in range(0, W+1, CELL):
         pygame.draw.line(screen, GRID_C, (x, 0), (x, GH))
-    for y in range(0, GH + 1, CELL):
+    for y in range(0, GH+1, CELL):
         pygame.draw.line(screen, GRID_C, (0, y), (W, y))
 
 
 def draw_centered(surface, font, text, y, color=TEXT_C):
     surf = font.render(text, True, color)
-    rect = surf.get_rect(center=(W // 2, y))
-    surface.blit(surf, rect)
+    surface.blit(surf, surf.get_rect(center=(W//2, y)))
 
 
 def dark_overlay(screen):
@@ -220,18 +509,12 @@ def dark_overlay(screen):
 # ── UI helpers ────────────────────────────────────────────────────────────────
 
 def make_rect(cx, cy, w=300, h=54):
-    """Return a Rect centered at (cx, cy)."""
-    return pygame.Rect(cx - w // 2, cy - h // 2, w, h)
+    return pygame.Rect(cx-w//2, cy-h//2, w, h)
 
 
 def draw_btn(surf, font, text, rect, selected=False):
     hov = pygame.Rect(rect).collidepoint(pygame.mouse.get_pos())
-    if selected:
-        bg, border = BTN_SEL, TUSK_C
-    elif hov:
-        bg, border = BTN_HOV, GRID_C
-    else:
-        bg, border = BTN_BG, GRID_C
+    bg, border = (BTN_SEL, TUSK_C) if selected else (BTN_HOV, GRID_C) if hov else (BTN_BG, GRID_C)
     pygame.draw.rect(surf, bg, rect, border_radius=10)
     pygame.draw.rect(surf, border, rect, 2, border_radius=10)
     lbl = font.render(text, True, TEXT_C)
@@ -246,109 +529,199 @@ def was_clicked(rect, event):
 
 # ── Game helpers ──────────────────────────────────────────────────────────────
 
-def random_food(snake):
-    occupied = set(snake)
+def random_food(snake, obstacles=None):
+    occupied = set(snake) | (set(obstacles) if obstacles else set())
     while True:
-        pos = (random.randint(0, COLS - 1), random.randint(0, ROWS - 1))
+        pos = (random.randint(0, COLS-1), random.randint(0, ROWS-1))
         if pos not in occupied:
             return pos
 
 
-def new_game():
-    cx, cy = COLS // 2, ROWS // 2
-    snake  = [(cx, cy), (cx - 1, cy), (cx - 2, cy)]
-    return snake, RIGHT, random_food(snake), 0
+def random_obstacles(snake, count=12):
+    occupied = set(snake)
+    obs, attempts = [], 0
+    while len(obs) < count and attempts < 300:
+        pos = (random.randint(0, COLS-1), random.randint(0, ROWS-1))
+        if pos not in occupied and pos not in obs:
+            obs.append(pos)
+        attempts += 1
+    return obs
+
+
+def new_game(mode="classic"):
+    cx, cy = COLS//2, ROWS//2
+    snake  = [(cx, cy), (cx-1, cy), (cx-2, cy)]
+    obs    = random_obstacles(snake) if mode == "obstacles" else []
+    return snake, RIGHT, random_food(snake, obs), 0, obs
 
 
 def get_speed(score, speed_key):
-    base = min(22, FPS + score // 3)
+    base = min(22, FPS + score//3)
     return max(4, int(base * SPEED_MULT[speed_key]))
 
 
-# ── Menu screen ───────────────────────────────────────────────────────────────
+# ── HUD ───────────────────────────────────────────────────────────────────────
 
-def draw_menu(screen, fonts, cfg, lolly_surf):
-    """Render main menu. Returns dict of button Rects."""
-    font_big, font_med, font_small = fonts
-    s = T[cfg["language"]]
+def draw_hud(screen, font_small, save, score, character, mode, time_left):
+    s  = T[save["language"]]
+    hs = save["high_scores"].get(hs_key(character, mode), 0)
+    pygame.draw.rect(screen, HUD_C, (0, GH, W, H-GH))
+    pygame.draw.line(screen, GRID_C, (0, GH), (W, GH), 1)
+    if mode == "timeattack":
+        txt = f"{s['lollies']}: {score}   {s['time']}: {max(0, int(time_left))}s   {s['record']}: {hs}"
+    else:
+        txt = f"{s['lollies']}: {score}   {s['record']}: {hs}"
+    hud = font_small.render(txt, True, TEXT_C)
+    screen.blit(hud, (16, GH+16))
 
+
+# ── Screen renderers ──────────────────────────────────────────────────────────
+
+def draw_bg_grid(screen):
     screen.fill(BG)
-    # full-screen decorative grid
-    for x in range(0, W + 1, CELL):
+    for x in range(0, W+1, CELL):
         pygame.draw.line(screen, GRID_C, (x, 0), (x, H))
-    for y in range(0, H + 1, CELL):
+    for y in range(0, H+1, CELL):
         pygame.draw.line(screen, GRID_C, (0, y), (W, y))
     ov = pygame.Surface((W, H), pygame.SRCALPHA)
     ov.fill((0, 0, 0, 120))
     screen.blit(ov, (0, 0))
 
-    # decorative lollipops flanking the title
-    screen.blit(lolly_surf, (W // 2 - 160 - CELL // 2, 155))
-    screen.blit(lolly_surf, (W // 2 + 160 - CELL // 2, 155))
 
+def draw_menu(screen, fonts, save, food_surf):
+    font_big, font_med, _ = fonts
+    s = T[save["language"]]
+    draw_bg_grid(screen)
+    screen.blit(food_surf, (W//2 - 160 - CELL//2, 155))
+    screen.blit(food_surf, (W//2 + 160 - CELL//2, 155))
     draw_centered(screen, font_big, "MAMMOTH", 192, TUSK_C)
-
     rects = {
-        "play":     make_rect(W // 2, 360),
-        "settings": make_rect(W // 2, 438),
-        "quit":     make_rect(W // 2, 516),
+        "play":     make_rect(W//2, 360),
+        "settings": make_rect(W//2, 438),
+        "quit":     make_rect(W//2, 516),
     }
-    draw_btn(screen, font_med, s["play"],        rects["play"])
+    draw_btn(screen, font_med, s["play"],         rects["play"])
     draw_btn(screen, font_med, s["settings_btn"], rects["settings"])
-    draw_btn(screen, font_med, s["quit"],         rects["quit"])
+    draw_btn(screen, font_med, s["quit"],          rects["quit"])
     return rects
 
 
-# ── Settings screen ───────────────────────────────────────────────────────────
-
-def draw_settings(screen, fonts, cfg):
-    """Render settings screen. Returns dict of button Rects."""
+def draw_char_select(screen, fonts, save, food_surfs, body_surfs):
     font_big, font_med, font_small = fonts
-    lang = cfg["language"]
-    s = T[lang]
-
+    s = T[save["language"]]
     screen.fill(BG)
     ov = pygame.Surface((W, H), pygame.SRCALPHA)
     ov.fill((0, 0, 0, 80))
     screen.blit(ov, (0, 0))
+    draw_centered(screen, font_big, s["char_select"], 90, TUSK_C)
+    pygame.draw.line(screen, GRID_C, (W//4, 148), (W*3//4, 148), 1)
 
-    draw_centered(screen, font_big, s["settings_btn"], 110, TUSK_C)
-    pygame.draw.line(screen, GRID_C, (W // 4, 168), (W * 3 // 4, 168), 1)
-
+    char_names = {"mammoth": s["char_mammoth"], "bunny": s["char_bunny"], "bear": s["char_bear"]}
+    centers_x  = [W//4, W//2, W*3//4]
     rects = {}
-    LABEL_RIGHT = 300   # right edge of row labels
-    # button center-x positions for 2-btn and 3-btn rows
-    CENTERS_2 = [560, 700]
-    CENTERS_3 = [460, 600, 740]
+    for i, char in enumerate(CHARACTERS):
+        cx_c = centers_x[i]
+        screen.blit(body_surfs[char], (cx_c - CELL//2, 185))
+        screen.blit(food_surfs[char], (cx_c - CELL//2, 245))
+        name_lbl = font_small.render(char_names[char], True, TEXT_C)
+        screen.blit(name_lbl, name_lbl.get_rect(center=(cx_c, 310)))
+        r = make_rect(cx_c, 370, 190, 52)
+        draw_btn(screen, font_med, char_names[char], r, selected=(save.get("last_character") == char))
+        rects[char] = r
 
-    def settings_row(y, label_key, btn_specs, use_small=False):
-        lbl = font_med.render(s[label_key], True, TEXT_C)
-        screen.blit(lbl, lbl.get_rect(midright=(LABEL_RIGHT, y)))
-        centers = CENTERS_3 if len(btn_specs) == 3 else CENTERS_2
-        bw = 105 if len(btn_specs) == 3 else 120
-        f = font_small if use_small else font_med
-        for i, (key, text, selected) in enumerate(btn_specs):
-            r = make_rect(centers[i], y, bw, 50)
-            draw_btn(screen, f, text, r, selected=selected)
-            rects[key] = r
-
-    settings_row(285, "language_label", [
-        ("lang_de", "DE", lang == "de"),
-        ("lang_en", "EN", lang == "en"),
-    ])
-    settings_row(390, "speed_label", [
-        ("speed_slow",   s["slow"],   cfg["speed"] == "slow"),
-        ("speed_normal", s["normal"], cfg["speed"] == "normal"),
-        ("speed_fast",   s["fast"],   cfg["speed"] == "fast"),
-    ], use_small=True)
-    settings_row(490, "grid_label", [
-        ("grid_on",  s["on"],  cfg["show_grid"]),
-        ("grid_off", s["off"], not cfg["show_grid"]),
-    ])
-
-    rects["back"] = make_rect(W // 2, 630)
+    rects["back"] = make_rect(W//2, 480)
     draw_btn(screen, font_med, s["back"], rects["back"])
     return rects
+
+
+def draw_mode_select(screen, fonts, save):
+    font_big, font_med, font_small = fonts
+    s = T[save["language"]]
+    screen.fill(BG)
+    ov = pygame.Surface((W, H), pygame.SRCALPHA)
+    ov.fill((0, 0, 0, 80))
+    screen.blit(ov, (0, 0))
+    draw_centered(screen, font_big, s["mode_select"], 90, TUSK_C)
+    pygame.draw.line(screen, GRID_C, (W//4, 148), (W*3//4, 148), 1)
+
+    modes = [
+        ("classic",    s["mode_classic"],    s["mode_classic_d"]),
+        ("timeattack", s["mode_timeattack"], s["mode_timeattack_d"]),
+        ("zen",        s["mode_zen"],        s["mode_zen_d"]),
+        ("obstacles",  s["mode_obstacles"],  s["mode_obstacles_d"]),
+    ]
+    ys = [220, 320, 420, 520]
+    rects = {}
+    for (mode_key, mode_name, mode_desc), y in zip(modes, ys):
+        r = make_rect(W//2, y, 420, 60)
+        draw_btn(screen, font_med, mode_name, r, selected=(save.get("last_mode") == mode_key))
+        desc = font_small.render(mode_desc, True, GRID_C)
+        screen.blit(desc, desc.get_rect(center=(W//2, y+46)))
+        rects[mode_key] = r
+
+    rects["back"] = make_rect(W//2, 660)
+    draw_btn(screen, font_med, s["back"], rects["back"])
+    return rects
+
+
+def draw_settings(screen, fonts, save):
+    font_big, font_med, font_small = fonts
+    lang = save["language"]
+    s = T[lang]
+    screen.fill(BG)
+    ov = pygame.Surface((W, H), pygame.SRCALPHA)
+    ov.fill((0, 0, 0, 80))
+    screen.blit(ov, (0, 0))
+    draw_centered(screen, font_big, s["settings_btn"], 100, TUSK_C)
+    pygame.draw.line(screen, GRID_C, (W//4, 158), (W*3//4, 158), 1)
+
+    rects = {}
+    LABEL_R = 300
+    C2 = [560, 700]
+    C3 = [460, 600, 740]
+
+    def row(y, label_key, specs, small=False):
+        lbl = font_med.render(s[label_key], True, TEXT_C)
+        screen.blit(lbl, lbl.get_rect(midright=(LABEL_R, y)))
+        centers = C3 if len(specs) == 3 else C2
+        bw = 105 if len(specs) == 3 else 120
+        f  = font_small if small else font_med
+        for i, (key, text, sel) in enumerate(specs):
+            r = make_rect(centers[i], y, bw, 50)
+            draw_btn(screen, f, text, r, selected=sel)
+            rects[key] = r
+
+    row(250, "language_label", [("lang_de","DE", lang=="de"), ("lang_en","EN", lang=="en")])
+    row(345, "speed_label",    [("speed_slow", s["slow"],   save["speed"]=="slow"),
+                                 ("speed_normal", s["normal"], save["speed"]=="normal"),
+                                 ("speed_fast", s["fast"],   save["speed"]=="fast")], small=True)
+    row(440, "grid_label",     [("grid_on",  s["on"],  save["show_grid"]),
+                                 ("grid_off", s["off"], not save["show_grid"])])
+    row(535, "sound_label",    [("sound_on", s["on"],  save["sound"]),
+                                 ("sound_off",s["off"], not save["sound"])])
+
+    rects["back"] = make_rect(W//2, 650)
+    draw_btn(screen, font_med, s["back"], rects["back"])
+    return rects
+
+
+def draw_game_scene(screen, fonts, save, snake, direction, food, score,
+                    character, mode, time_left, obstacles, food_surfs, body_surfs, particles):
+    font_big, font_med, font_small = fonts
+    screen.fill(BG)
+    if save["show_grid"]:
+        draw_grid(screen)
+    if mode == "obstacles":
+        for obs in obstacles:
+            pygame.draw.rect(screen, OBSTACLE_C,
+                             (obs[0]*CELL+3, obs[1]*CELL+3, CELL-6, CELL-6), border_radius=6)
+    for seg in reversed(snake[1:]):
+        screen.blit(body_surfs[character], (seg[0]*CELL, seg[1]*CELL))
+    if snake:
+        draw_head(screen, snake[0][0], snake[0][1], direction, character)
+    screen.blit(food_surfs[character], (food[0]*CELL, food[1]*CELL))
+    draw_particles(screen, particles)
+    draw_hud(screen, font_small, save, score, character, mode, time_left)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -364,125 +737,224 @@ def main():
     font_small = pygame.font.SysFont("Arial", 20)
     fonts = (font_big, font_med, font_small)
 
-    body_surf  = make_body_surf()
-    lolly_surf = make_lollipop_surf()
+    sounds    = init_sounds()
+    save      = load_save()
+    food_surfs = {c: make_food_surf(c) for c in CHARACTERS}
+    body_surfs = {c: make_body_surf(c) for c in CHARACTERS}
 
-    cfg = {"language": "de", "speed": "normal", "show_grid": True}
+    character = save.get("last_character", "mammoth")
+    mode      = save.get("last_mode", "classic")
 
-    snake, direction, food, score = new_game()
-    high_score  = 0
+    snake, direction, food, score, obstacles = new_game(mode)
     pending_dir = direction
+    particles   = []
     state       = "menu"
+    time_left   = float(TIME_ATTACK_SECS)
+    last_tick   = pygame.time.get_ticks()
 
     while True:
         events = pygame.event.get()
+
         for event in events:
             if event.type == pygame.QUIT:
+                write_save(save)
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if state in ("playing", "dead", "settings"):
+                if state == "playing":
+                    state = "paused"
+                    play_snd(sounds, "pause", save)
+                elif state == "paused":
+                    state = "menu"
+                    write_save(save)
+                elif state == "dead":
+                    state = "menu"
+                    write_save(save)
+                elif state in ("settings", "char_select", "mode_select"):
                     state = "menu"
                 elif state == "menu":
+                    write_save(save)
                     pygame.quit()
                     sys.exit()
 
         # ── Menu ──────────────────────────────────────────────────────────
         if state == "menu":
-            btn = draw_menu(screen, fonts, cfg, lolly_surf)
+            btn = draw_menu(screen, fonts, save, food_surfs[character])
             for event in events:
                 if was_clicked(btn["play"], event):
-                    snake, direction, food, score = new_game()
-                    pending_dir = direction
-                    state = "playing"
+                    play_snd(sounds, "click", save)
+                    state = "char_select"
                 elif was_clicked(btn["settings"], event):
+                    play_snd(sounds, "click", save)
                     state = "settings"
                 elif was_clicked(btn["quit"], event):
+                    write_save(save)
                     pygame.quit()
                     sys.exit()
 
+        # ── Character select ───────────────────────────────────────────────
+        elif state == "char_select":
+            btn = draw_char_select(screen, fonts, save, food_surfs, body_surfs)
+            for event in events:
+                for char in CHARACTERS:
+                    if was_clicked(btn[char], event):
+                        play_snd(sounds, "click", save)
+                        character = char
+                        save["last_character"] = char
+                        state = "mode_select"
+                if was_clicked(btn["back"], event):
+                    play_snd(sounds, "click", save)
+                    state = "menu"
+
+        # ── Mode select ────────────────────────────────────────────────────
+        elif state == "mode_select":
+            btn = draw_mode_select(screen, fonts, save)
+            for event in events:
+                for m in ["classic", "timeattack", "zen", "obstacles"]:
+                    if was_clicked(btn[m], event):
+                        play_snd(sounds, "click", save)
+                        mode = m
+                        save["last_mode"] = m
+                        snake, direction, food, score, obstacles = new_game(mode)
+                        pending_dir = direction
+                        particles   = []
+                        time_left   = float(TIME_ATTACK_SECS)
+                        last_tick   = pygame.time.get_ticks()
+                        state       = "playing"
+                if was_clicked(btn["back"], event):
+                    play_snd(sounds, "click", save)
+                    state = "char_select"
+
         # ── Settings ──────────────────────────────────────────────────────
         elif state == "settings":
-            btn = draw_settings(screen, fonts, cfg)
+            btn = draw_settings(screen, fonts, save)
             for event in events:
-                if was_clicked(btn["lang_de"], event):      cfg["language"] = "de"
-                elif was_clicked(btn["lang_en"], event):    cfg["language"] = "en"
-                elif was_clicked(btn["speed_slow"], event): cfg["speed"] = "slow"
-                elif was_clicked(btn["speed_normal"], event): cfg["speed"] = "normal"
-                elif was_clicked(btn["speed_fast"], event): cfg["speed"] = "fast"
-                elif was_clicked(btn["grid_on"], event):    cfg["show_grid"] = True
-                elif was_clicked(btn["grid_off"], event):   cfg["show_grid"] = False
-                elif was_clicked(btn["back"], event):       state = "menu"
+                if was_clicked(btn["lang_de"], event):
+                    play_snd(sounds, "click", save); save["language"] = "de"
+                elif was_clicked(btn["lang_en"], event):
+                    play_snd(sounds, "click", save); save["language"] = "en"
+                elif was_clicked(btn["speed_slow"], event):
+                    play_snd(sounds, "click", save); save["speed"] = "slow"
+                elif was_clicked(btn["speed_normal"], event):
+                    play_snd(sounds, "click", save); save["speed"] = "normal"
+                elif was_clicked(btn["speed_fast"], event):
+                    play_snd(sounds, "click", save); save["speed"] = "fast"
+                elif was_clicked(btn["grid_on"], event):
+                    play_snd(sounds, "click", save); save["show_grid"] = True
+                elif was_clicked(btn["grid_off"], event):
+                    play_snd(sounds, "click", save); save["show_grid"] = False
+                elif was_clicked(btn["sound_on"], event):
+                    save["sound"] = True
+                elif was_clicked(btn["sound_off"], event):
+                    save["sound"] = False
+                elif was_clicked(btn["back"], event):
+                    play_snd(sounds, "click", save)
+                    write_save(save)
+                    state = "menu"
+
+        # ── Paused ────────────────────────────────────────────────────────
+        elif state == "paused":
+            draw_game_scene(screen, fonts, save, snake, direction, food, score,
+                            character, mode, time_left, obstacles, food_surfs, body_surfs, particles)
+            ov = pygame.Surface((W, GH), pygame.SRCALPHA)
+            ov.fill((0, 0, 0, 160))
+            screen.blit(ov, (0, 0))
+            s = T[save["language"]]
+            draw_centered(screen, font_big,   s["pause"],      GH//2-30, TUSK_C)
+            draw_centered(screen, font_small, s["pause_hint"], GH//2+28)
+            for event in events:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+                    play_snd(sounds, "pause", save)
+                    state = "playing"
+                    last_tick = pygame.time.get_ticks()
 
         # ── Playing / Dead ────────────────────────────────────────────────
         else:
-            s = T[cfg["language"]]
+            s = T[save["language"]]
 
-            # game logic
             if state == "playing":
-                direction = pending_dir
-                hx, hy   = snake[0]
-                dx, dy   = direction
-                new_head = (hx + dx, hy + dy)
-
-                if not (0 <= new_head[0] < COLS and 0 <= new_head[1] < ROWS) \
-                        or new_head in snake:
-                    high_score = max(high_score, score)
-                    state = "dead"
+                # Time attack countdown
+                if mode == "timeattack":
+                    now = pygame.time.get_ticks()
+                    time_left -= (now - last_tick) / 1000.0
+                    last_tick = now
+                    if time_left <= 0:
+                        time_left = 0
+                        key = hs_key(character, mode)
+                        if score > save["high_scores"].get(key, 0):
+                            save["high_scores"][key] = score
+                            write_save(save)
+                        play_snd(sounds, "dead", save)
+                        state = "dead"
                 else:
-                    snake.insert(0, new_head)
-                    if new_head == food:
-                        score += 1
-                        food = random_food(snake)
-                    else:
-                        snake.pop()
+                    last_tick = pygame.time.get_ticks()
 
-            # key input
+                if state == "playing":
+                    direction = pending_dir
+                    hx, hy = snake[0]
+                    dx, dy = direction
+                    new_head = (hx+dx, hy+dy)
+
+                    if mode == "zen":
+                        new_head = (new_head[0] % COLS, new_head[1] % ROWS)
+
+                    wall_hit = not (0 <= new_head[0] < COLS and 0 <= new_head[1] < ROWS)
+                    if wall_hit or new_head in obstacles or new_head in snake:
+                        key = hs_key(character, mode)
+                        if score > save["high_scores"].get(key, 0):
+                            save["high_scores"][key] = score
+                            write_save(save)
+                        play_snd(sounds, "dead", save)
+                        state = "dead"
+                    else:
+                        snake.insert(0, new_head)
+                        if new_head == food:
+                            score += 1
+                            particles += emit_particles(food, food_color(character))
+                            play_snd(sounds, "eat", save)
+                            food = random_food(snake, obstacles)
+                        else:
+                            snake.pop()
+
+            # Input
             for event in events:
                 if event.type == pygame.KEYDOWN:
                     if state == "dead":
                         if event.key in (pygame.K_SPACE, pygame.K_RETURN):
-                            snake, direction, food, score = new_game()
+                            play_snd(sounds, "click", save)
+                            snake, direction, food, score, obstacles = new_game(mode)
                             pending_dir = direction
-                            state = "playing"
+                            particles   = []
+                            time_left   = float(TIME_ATTACK_SECS)
+                            last_tick   = pygame.time.get_ticks()
+                            state       = "playing"
                     elif state == "playing":
-                        nd = {
-                            pygame.K_UP: UP,    pygame.K_w: UP,
-                            pygame.K_DOWN: DOWN, pygame.K_s: DOWN,
-                            pygame.K_LEFT: LEFT, pygame.K_a: LEFT,
-                            pygame.K_RIGHT: RIGHT, pygame.K_d: RIGHT,
-                        }.get(event.key)
-                        if nd and nd != OPPOSITES[direction]:
-                            pending_dir = nd
+                        if event.key == pygame.K_p:
+                            play_snd(sounds, "pause", save)
+                            state = "paused"
+                        else:
+                            nd = {
+                                pygame.K_UP: UP,    pygame.K_w: UP,
+                                pygame.K_DOWN: DOWN, pygame.K_s: DOWN,
+                                pygame.K_LEFT: LEFT, pygame.K_a: LEFT,
+                                pygame.K_RIGHT: RIGHT, pygame.K_d: RIGHT,
+                            }.get(event.key)
+                            if nd and nd != OPPOSITES[direction]:
+                                pending_dir = nd
 
-            # draw game
-            screen.fill(BG)
-            if cfg["show_grid"]:
-                draw_grid(screen)
+            update_particles(particles)
+            draw_game_scene(screen, fonts, save, snake, direction, food, score,
+                            character, mode, time_left, obstacles, food_surfs, body_surfs, particles)
 
-            for seg in reversed(snake[1:]):
-                screen.blit(body_surf, (seg[0] * CELL, seg[1] * CELL))
-            if snake:
-                draw_head(screen, snake[0][0], snake[0][1], direction)
-            screen.blit(lolly_surf, (food[0] * CELL, food[1] * CELL))
-
-            # HUD
-            pygame.draw.rect(screen, HUD_C, (0, GH, W, H - GH))
-            pygame.draw.line(screen, GRID_C, (0, GH), (W, GH), 1)
-            hud = font_small.render(
-                f"{s['lollies']}:  {score}      {s['record']}:  {high_score}",
-                True, TEXT_C)
-            screen.blit(hud, (16, GH + 16))
-
-            # dead overlay
             if state == "dead":
                 dark_overlay(screen)
-                draw_centered(screen, font_big,   s["game_over"],              GH // 2 - 65, PINK)
-                draw_centered(screen, font_med,   s["score_msg"].format(score), GH // 2 + 10)
-                draw_centered(screen, font_small, s["restart_hint"],            GH // 2 + 52)
+                go_txt = s["time_up"] if (mode == "timeattack" and time_left <= 0) else s["game_over"]
+                draw_centered(screen, font_big,   go_txt,                    GH//2-65, PINK)
+                draw_centered(screen, font_med,   s["score_msg"].format(score), GH//2+10)
+                draw_centered(screen, font_small, s["restart_hint"],           GH//2+55)
 
         pygame.display.flip()
-        clock.tick(get_speed(score, cfg["speed"]) if state == "playing" else 60)
+        clock.tick(get_speed(score, save["speed"]) if state == "playing" else 30)
 
 
 if __name__ == "__main__":
