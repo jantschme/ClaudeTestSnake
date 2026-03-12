@@ -87,3 +87,16 @@ git push
 - Use clear, specific commit messages (e.g. `"add trunk wobble animation"`, `"fix collision detection off-by-one"`).
 - Never use `git add -A` or `git add .` — always stage specific files to avoid committing build artifacts or secrets.
 - Push to GitHub after every commit so work is never only local.
+
+## Token Optimization
+
+**Clear chat after each task** to avoid token bloat in long conversations.
+
+Workflow:
+1. Complete one focused task (e.g., implement `draw_mode_select()`)
+2. Commit and push to GitHub
+3. Clear/end the chat session
+4. Start fresh session for next task
+5. Pick next task from `TaskList`
+
+This keeps individual conversations under 50K tokens and saves significant token spend on the 9-task overhaul.
