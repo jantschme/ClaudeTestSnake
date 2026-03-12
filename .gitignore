@@ -2,6 +2,7 @@
 build/
 dist/
 *.spec
+!Mammoth.spec
 
 # Python
 __pycache__/
