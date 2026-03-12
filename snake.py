@@ -637,12 +637,8 @@ def draw_menu(screen, fonts, save, food_surfs, body_surfs, character):
 def draw_mode_select(screen, fonts, save):
     font_big, font_med, font_small = fonts
     s = T[save["language"]]
-    screen.fill(BG)
-    ov = pygame.Surface((W, H), pygame.SRCALPHA)
-    ov.fill((0, 0, 0, 80))
-    screen.blit(ov, (0, 0))
-    draw_centered(screen, font_big, s["mode_select"], 90, TUSK_C)
-    pygame.draw.line(screen, GRID_C, (W//4, 148), (W*3//4, 148), 1)
+    draw_bg_grid(screen)
+    draw_centered(screen, font_big, s["mode_select"], 80, TUSK_C)
 
     modes = [
         ("classic",    s["mode_classic"],    s["mode_classic_d"]),
@@ -650,7 +646,8 @@ def draw_mode_select(screen, fonts, save):
         ("zen",        s["mode_zen"],        s["mode_zen_d"]),
         ("obstacles",  s["mode_obstacles"],  s["mode_obstacles_d"]),
     ]
-    ys = [220, 320, 420, 520]
+    # Adjusted y positions for 1024×828 screen
+    ys = [240, 340, 440, 540]
     rects = {}
     for (mode_key, mode_name, mode_desc), y in zip(modes, ys):
         r = make_rect(W//2, y, 420, 60)
@@ -659,7 +656,7 @@ def draw_mode_select(screen, fonts, save):
         screen.blit(desc, desc.get_rect(center=(W//2, y+46)))
         rects[mode_key] = r
 
-    rects["back"] = make_rect(W//2, 660)
+    rects["back"] = make_rect(W//2, 680)
     draw_btn(screen, font_med, s["back"], rects["back"])
     return rects
 
