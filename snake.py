@@ -625,26 +625,72 @@ def draw_menu(screen, fonts, save, food_surfs, body_surfs, character):
     card_w, card_h = 240, 240
     rects = {}
 
+    mx, my = pygame.mouse.get_pos()
+    t = pygame.time.get_ticks() / 1000.0
+    char_sparkle_colors = {"mammoth": TUSK_C, "bunny": PINK, "bear": HONEY_C}
+
     for i, char in enumerate(CHARACTERS):
         cx = centers_x[i]
         card_x = cx - card_w // 2
         card_y = 220 - card_h // 2
 
-        # Draw card background
         is_selected = (character == char)
-        bg_color = BTN_SEL if is_selected else BTN_BG
-        border_color = TUSK_C if is_selected else GRID_C
-        pygame.draw.rect(screen, bg_color, (card_x, card_y, card_w, card_h), border_radius=12)
-        pygame.draw.rect(screen, border_color, (card_x, card_y, card_w, card_h), 4, border_radius=12)
+        is_hovered = pygame.Rect(card_x, card_y, card_w, card_h).collidepoint(mx, my)
+
+        # Hover float effect (card lifts 4px on mouse-over)
+        ry = card_y - (4 if is_hovered else 0)
+
+        # Drop shadow
+        shadow_surf = pygame.Surface((card_w + 8, card_h + 12), pygame.SRCALPHA)
+        pygame.draw.rect(shadow_surf, (0, 0, 0, 70),
+                         (0, 0, card_w + 8, card_h + 12), border_radius=14)
+        screen.blit(shadow_surf, (card_x - 2, ry + 10))
+
+        # Pulsing glow around selected card
+        if is_selected:
+            pulse = 0.5 + 0.5 * math.sin(t * 3)
+            glow_alpha = int(55 + 45 * pulse)
+            glow_pad = int(6 + 3 * pulse)
+            glow_surf = pygame.Surface((card_w + glow_pad * 2, card_h + glow_pad * 2), pygame.SRCALPHA)
+            pygame.draw.rect(glow_surf, (*TUSK_C, glow_alpha),
+                             (0, 0, card_w + glow_pad * 2, card_h + glow_pad * 2), border_radius=16)
+            screen.blit(glow_surf, (card_x - glow_pad, ry - glow_pad))
+
+        # Card background with hover state
+        bg_color = BTN_SEL if is_selected else (BTN_HOV if is_hovered else BTN_BG)
+        border_color = TUSK_C if is_selected else (TEXT_C if is_hovered else GRID_C)
+        pygame.draw.rect(screen, bg_color, (card_x, ry, card_w, card_h), border_radius=12)
+
+        # Gradient highlight (light shimmer at top of card)
+        grad_surf = pygame.Surface((card_w, card_h // 2), pygame.SRCALPHA)
+        for gy in range(card_h // 2):
+            ga = int(22 * (1.0 - gy / (card_h / 2)))
+            pygame.draw.line(grad_surf, (255, 255, 255, ga), (0, gy), (card_w, gy))
+        screen.blit(grad_surf, (card_x, ry))
+
+        pygame.draw.rect(screen, border_color, (card_x, ry, card_w, card_h), 4, border_radius=12)
 
         # Draw body
-        screen.blit(body_surfs[char], (cx - CELL//2, card_y + 30))
+        screen.blit(body_surfs[char], (cx - CELL//2, ry + 30))
         # Draw food
-        screen.blit(food_surfs[char], (cx - CELL//2, card_y + 100))
+        screen.blit(food_surfs[char], (cx - CELL//2, ry + 100))
         # Draw name
         name_lbl = font_small.render(char_names[char], True, TEXT_C)
-        screen.blit(name_lbl, name_lbl.get_rect(center=(cx, card_y + 200)))
+        screen.blit(name_lbl, name_lbl.get_rect(center=(cx, ry + 200)))
 
+        # Character-coloured sparkles
+        random.seed(42 + i * 7)
+        sparkle_c = char_sparkle_colors[char]
+        for sp_i in range(5):
+            sp_x = cx + random.randint(-card_w // 2 - 15, card_w // 2 + 15)
+            sp_y = ry + random.randint(-10, card_h + 10)
+            sp_size = random.randint(1, 2)
+            sp_alpha = int(70 * abs(math.sin(t * 1.5 + sp_i + i * 1.3)))
+            sp_surf = pygame.Surface((sp_size * 2 + 1, sp_size * 2 + 1), pygame.SRCALPHA)
+            pygame.draw.circle(sp_surf, (*sparkle_c, sp_alpha), (sp_size, sp_size), sp_size)
+            screen.blit(sp_surf, (sp_x - sp_size, sp_y - sp_size))
+
+        # Store original card_y rect for click detection (unaffected by hover float)
         rects[f"char_{char}"] = pygame.Rect(card_x, card_y, card_w, card_h)
 
     # Control buttons
