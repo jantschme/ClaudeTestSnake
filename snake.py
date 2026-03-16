@@ -592,12 +592,11 @@ def draw_bg_grid(screen):
     for x in range(0, W+H, diag_spacing):
         pygame.draw.line(screen, diag_color, (x, 0), (x-H, H), 1)
 
-    # Gradient overlay (darker at edges, lighter toward center)
+    # Gradient overlay (darker at top+bottom edges, lighter at center)
     grad = pygame.Surface((W, H), pygame.SRCALPHA)
     for y in range(H):
-        alpha_top = int(60 * (y / H))
-        alpha_bot = int(60 * ((H - y) / H))
-        alpha = int((alpha_top + alpha_bot) / 2) + 40
+        edge_dist = min(y, H - y) / (H / 2)  # 0 at edges, 1 at center
+        alpha = int(80 * (1.0 - edge_dist))
         pygame.draw.line(grad, (0, 0, 0, alpha), (0, y), (W, y))
     screen.blit(grad, (0, 0))
 
