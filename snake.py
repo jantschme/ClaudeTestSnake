@@ -665,12 +665,8 @@ def draw_settings(screen, fonts, save):
     font_big, font_med, font_small = fonts
     lang = save["language"]
     s = T[lang]
-    screen.fill(BG)
-    ov = pygame.Surface((W, H), pygame.SRCALPHA)
-    ov.fill((0, 0, 0, 80))
-    screen.blit(ov, (0, 0))
-    draw_centered(screen, font_big, s["settings_btn"], 100, TUSK_C)
-    pygame.draw.line(screen, GRID_C, (W//4, 158), (W*3//4, 158), 1)
+    draw_bg_grid(screen)
+    draw_centered(screen, font_big, s["settings_btn"], 80, TUSK_C)
 
     rects = {}
     LABEL_R = 300
@@ -688,16 +684,17 @@ def draw_settings(screen, fonts, save):
             draw_btn(screen, f, text, r, selected=sel)
             rects[key] = r
 
-    row(250, "language_label", [("lang_de","DE", lang=="de"), ("lang_en","EN", lang=="en")])
-    row(345, "speed_label",    [("speed_slow", s["slow"],   save["speed"]=="slow"),
+    # Adjusted y positions for 1024×828 screen
+    row(270, "language_label", [("lang_de","DE", lang=="de"), ("lang_en","EN", lang=="en")])
+    row(355, "speed_label",    [("speed_slow", s["slow"],   save["speed"]=="slow"),
                                  ("speed_normal", s["normal"], save["speed"]=="normal"),
                                  ("speed_fast", s["fast"],   save["speed"]=="fast")], small=True)
     row(440, "grid_label",     [("grid_on",  s["on"],  save["show_grid"]),
                                  ("grid_off", s["off"], not save["show_grid"])])
-    row(535, "sound_label",    [("sound_on", s["on"],  save["sound"]),
+    row(525, "sound_label",    [("sound_on", s["on"],  save["sound"]),
                                  ("sound_off",s["off"], not save["sound"])])
 
-    rects["back"] = make_rect(W//2, 650)
+    rects["back"] = make_rect(W//2, 680)
     draw_btn(screen, font_med, s["back"], rects["back"])
     return rects
 
