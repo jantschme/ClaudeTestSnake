@@ -577,13 +577,40 @@ def draw_hud(screen, font_small, save, score, character, mode, time_left):
 
 def draw_bg_grid(screen):
     screen.fill(BG)
+
+    # Grid lines
     for x in range(0, W+1, CELL):
         pygame.draw.line(screen, GRID_C, (x, 0), (x, H))
     for y in range(0, H+1, CELL):
         pygame.draw.line(screen, GRID_C, (0, y), (W, y))
-    ov = pygame.Surface((W, H), pygame.SRCALPHA)
-    ov.fill((0, 0, 0, 120))
-    screen.blit(ov, (0, 0))
+
+    # Diagonal pattern (subtle criss-cross)
+    diag_color = (30, 50, 30)
+    diag_spacing = CELL * 2
+    for x in range(-H, W, diag_spacing):
+        pygame.draw.line(screen, diag_color, (x, 0), (x+H, H), 1)
+    for x in range(0, W+H, diag_spacing):
+        pygame.draw.line(screen, diag_color, (x, 0), (x-H, H), 1)
+
+    # Gradient overlay (darker at edges, lighter toward center)
+    grad = pygame.Surface((W, H), pygame.SRCALPHA)
+    for y in range(H):
+        alpha_top = int(60 * (y / H))
+        alpha_bot = int(60 * ((H - y) / H))
+        alpha = int((alpha_top + alpha_bot) / 2) + 40
+        pygame.draw.line(grad, (0, 0, 0, alpha), (0, y), (W, y))
+    screen.blit(grad, (0, 0))
+
+    # Floating particles (decorative stars/sparkles)
+    random.seed(42)  # Consistent pattern across frames
+    for i in range(12):
+        px = random.randint(0, W)
+        py = random.randint(0, H)
+        size = random.randint(1, 3)
+        sparkle_alpha = int(80 * (1.0 - abs(math.sin(pygame.time.get_ticks() / 500 + i)) * 0.5))
+        spark = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+        pygame.draw.circle(spark, (200, 220, 200, sparkle_alpha), (size, size), size)
+        screen.blit(spark, (px-size, py-size))
 
 
 def draw_menu(screen, fonts, save, food_surfs, body_surfs, character):
