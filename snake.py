@@ -790,9 +790,26 @@ def draw_settings(screen, fonts, save):
     return rects
 
 
+def build_static_surfs():
+    """Pre-compute surfaces that never change between frames."""
+    checker = pygame.Surface((W, GH), pygame.SRCALPHA)
+    for x in range(COLS):
+        for y in range(ROWS):
+            if (x + y) % 2 == 0:
+                pygame.draw.rect(checker, (10, 15, 10, 8),
+                                 (x*CELL, y*CELL, CELL, CELL))
+
+    vignette = pygame.Surface((W, GH), pygame.SRCALPHA)
+    for y in range(GH):
+        alpha = int(50 * max(0, 1.0 - min(y / 80, (GH - y) / 80)))
+        pygame.draw.line(vignette, (0, 0, 0, alpha), (0, y), (W, y))
+
+    return {"checker": checker, "vignette": vignette}
+
+
 def draw_game_scene(screen, fonts, save, snake, direction, food, score,
                     character, mode, time_left, obstacles, food_surfs, body_surfs, particles,
-                    prev_snake=None, move_t=1.0):
+                    prev_snake=None, move_t=1.0, static_surfs=None):
     font_big, font_med, font_small = fonts
     screen.fill(BG)
 
@@ -808,14 +825,17 @@ def draw_game_scene(screen, fonts, save, snake, direction, food, score,
     if save["show_grid"]:
         draw_grid(screen)
 
-    # Optional checkerboard pattern (subtle alternating cells)
-    checker = pygame.Surface((W, GH), pygame.SRCALPHA)
-    for x in range(0, COLS):
-        for y in range(0, ROWS):
-            if (x + y) % 2 == 0:
-                pygame.draw.rect(checker, (10, 15, 10, 8),
-                               (x*CELL, y*CELL, CELL, CELL))
-    screen.blit(checker, (0, 0))
+    # Checkerboard (pre-computed)
+    if static_surfs:
+        screen.blit(static_surfs["checker"], (0, 0))
+    else:
+        checker = pygame.Surface((W, GH), pygame.SRCALPHA)
+        for x in range(COLS):
+            for y in range(ROWS):
+                if (x + y) % 2 == 0:
+                    pygame.draw.rect(checker, (10, 15, 10, 8),
+                                     (x*CELL, y*CELL, CELL, CELL))
+        screen.blit(checker, (0, 0))
 
     if mode == "obstacles":
         for obs in obstacles:
@@ -837,12 +857,15 @@ def draw_game_scene(screen, fonts, save, snake, direction, food, score,
     screen.blit(food_surfs[character], (food[0]*CELL, food[1]*CELL))
     draw_particles(screen, particles)
 
-    # Vignette effect (darkening at edges)
-    vignette = pygame.Surface((W, GH), pygame.SRCALPHA)
-    for y in range(GH):
-        vignette_alpha = int(50 * max(0, 1.0 - min(y/80, (GH-y)/80)))
-        pygame.draw.line(vignette, (0, 0, 0, vignette_alpha), (0, y), (W, y))
-    screen.blit(vignette, (0, 0))
+    # Vignette (pre-computed)
+    if static_surfs:
+        screen.blit(static_surfs["vignette"], (0, 0))
+    else:
+        vignette = pygame.Surface((W, GH), pygame.SRCALPHA)
+        for y in range(GH):
+            alpha = int(50 * max(0, 1.0 - min(y / 80, (GH - y) / 80)))
+            pygame.draw.line(vignette, (0, 0, 0, alpha), (0, y), (W, y))
+        screen.blit(vignette, (0, 0))
 
     # Border around gameplay area
     pygame.draw.rect(screen, GRID_C, (0, 0, W, GH), 3)
@@ -894,10 +917,11 @@ def main():
     font_small = pygame.font.SysFont("Arial", 23)
     fonts = (font_big, font_med, font_small)
 
-    sounds    = init_sounds()
-    save      = load_save()
-    food_surfs = {c: make_food_surf(c) for c in CHARACTERS}
-    body_surfs = {c: make_body_surf(c) for c in CHARACTERS}
+    sounds      = init_sounds()
+    save        = load_save()
+    food_surfs  = {c: make_food_surf(c) for c in CHARACTERS}
+    body_surfs  = {c: make_body_surf(c) for c in CHARACTERS}
+    static_surfs = build_static_surfs()
 
     character = save.get("last_character", "mammoth")
     mode      = save.get("last_mode", "classic")
@@ -1015,7 +1039,7 @@ def main():
         elif state == "paused":
             draw_game_scene(screen, fonts, save, snake, direction, food, score,
                             character, mode, time_left, obstacles, food_surfs, body_surfs, particles,
-                            prev_snake, move_t)
+                            prev_snake, move_t, static_surfs)
             ov = pygame.Surface((W, GH), pygame.SRCALPHA)
             ov.fill((0, 0, 0, 160))
             screen.blit(ov, (0, 0))
@@ -1115,7 +1139,7 @@ def main():
             update_particles(particles)
             draw_game_scene(screen, fonts, save, snake, direction, food, score,
                             character, mode, time_left, obstacles, food_surfs, body_surfs, particles,
-                            prev_snake, move_t)
+                            prev_snake, move_t, static_surfs)
 
             if state == "dead":
                 dark_overlay(screen)
