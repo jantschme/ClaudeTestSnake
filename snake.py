@@ -731,8 +731,28 @@ def draw_game_scene(screen, fonts, save, snake, direction, food, score,
                     prev_snake=None, move_t=1.0):
     font_big, font_med, font_small = fonts
     screen.fill(BG)
+
+    # Noise pattern overlay (subtle per-frame randomness)
+    noise = pygame.Surface((W, GH), pygame.SRCALPHA)
+    for _ in range(200):
+        nx = random.randint(0, W-1)
+        ny = random.randint(0, GH-1)
+        noise_alpha = random.randint(5, 15)
+        pygame.draw.line(noise, (50, 50, 50, noise_alpha), (nx, ny), (nx+1, ny+1), 1)
+    screen.blit(noise, (0, 0))
+
     if save["show_grid"]:
         draw_grid(screen)
+
+    # Optional checkerboard pattern (subtle alternating cells)
+    checker = pygame.Surface((W, GH), pygame.SRCALPHA)
+    for x in range(0, COLS):
+        for y in range(0, ROWS):
+            if (x + y) % 2 == 0:
+                pygame.draw.rect(checker, (10, 15, 10, 8),
+                               (x*CELL, y*CELL, CELL, CELL))
+    screen.blit(checker, (0, 0))
+
     if mode == "obstacles":
         for obs in obstacles:
             pygame.draw.rect(screen, OBSTACLE_C,
@@ -752,6 +772,17 @@ def draw_game_scene(screen, fonts, save, snake, direction, food, score,
         draw_head(screen, head_px, head_py, direction, character)
     screen.blit(food_surfs[character], (food[0]*CELL, food[1]*CELL))
     draw_particles(screen, particles)
+
+    # Vignette effect (darkening at edges)
+    vignette = pygame.Surface((W, GH), pygame.SRCALPHA)
+    for y in range(GH):
+        vignette_alpha = int(50 * max(0, 1.0 - min(y/80, (GH-y)/80)))
+        pygame.draw.line(vignette, (0, 0, 0, vignette_alpha), (0, y), (W, y))
+    screen.blit(vignette, (0, 0))
+
+    # Border around gameplay area
+    pygame.draw.rect(screen, GRID_C, (0, 0, W, GH), 3)
+
     draw_hud(screen, font_small, save, score, character, mode, time_left)
 
 
