@@ -511,12 +511,31 @@ def make_rect(cx, cy, w=300, h=54):
 
 
 def draw_btn(surf, font, text, rect, selected=False):
-    hov = pygame.Rect(rect).collidepoint(pygame.mouse.get_pos())
+    r = pygame.Rect(rect)
+    hov = r.collidepoint(pygame.mouse.get_pos())
+    pressed = hov and pygame.mouse.get_pressed()[0]
+
+    # Shadow (skip when pressed – gives depth illusion)
+    if not pressed:
+        shadow_r = r.move(3, 3)
+        shadow_surf = pygame.Surface((shadow_r.width, shadow_r.height), pygame.SRCALPHA)
+        pygame.draw.rect(shadow_surf, (0, 0, 0, 80), shadow_surf.get_rect(), border_radius=10)
+        surf.blit(shadow_surf, shadow_r.topleft)
+
+    # Inset rect when pressed
+    draw_r = r.inflate(-4, -4) if pressed else r
+
     bg, border = (BTN_SEL, TUSK_C) if selected else (BTN_HOV, GRID_C) if hov else (BTN_BG, GRID_C)
-    pygame.draw.rect(surf, bg, rect, border_radius=10)
-    pygame.draw.rect(surf, border, rect, 2, border_radius=10)
+    pygame.draw.rect(surf, bg, draw_r, border_radius=10)
+    pygame.draw.rect(surf, border, draw_r, 2, border_radius=10)
+
+    # Inner highlight border on hover (not selected, not pressed)
+    if hov and not selected and not pressed:
+        inner = draw_r.inflate(-4, -4)
+        pygame.draw.rect(surf, MF, inner, 1, border_radius=8)
+
     lbl = font.render(text, True, TEXT_C)
-    surf.blit(lbl, lbl.get_rect(center=pygame.Rect(rect).center))
+    surf.blit(lbl, lbl.get_rect(center=draw_r.center))
 
 
 def was_clicked(rect, event):
