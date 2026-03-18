@@ -1133,8 +1133,13 @@ def main():
                                 pygame.K_LEFT: LEFT, pygame.K_a: LEFT,
                                 pygame.K_RIGHT: RIGHT, pygame.K_d: RIGHT,
                             }.get(event.key)
-                            if nd and nd != OPPOSITES[direction]:
+                            if nd and nd != OPPOSITES[pending_dir]:
                                 pending_dir = nd
+                                # Force early logic tick for immediate key response
+                                _now = pygame.time.get_ticks()
+                                _interval = 1000 / get_speed(score, save["speed"])
+                                if _now - last_logic_ms >= 60:
+                                    last_logic_ms = _now - int(_interval)
 
             update_particles(particles)
             draw_game_scene(screen, fonts, save, snake, direction, food, score,
