@@ -807,6 +807,56 @@ def build_static_surfs():
     return {"checker": checker, "vignette": vignette}
 
 
+def draw_snake_body(screen, snake, character, prev_snake=None, move_t=1.0):
+    """Draw the snake body as one continuous tube (circles + polygon connectors)."""
+    if len(snake) < 2:
+        return
+    if character == "mammoth":
+        col_outer, col_inner = MB, MD
+    elif character == "bunny":
+        col_outer, col_inner = BUNNY_BODY, (170, 165, 165)
+    else:
+        col_outer, col_inner = BEAR_BODY, (130, 80, 30)
+    R = int(CELL * 0.40)
+    r = int(CELL * 0.20)
+
+    def interp_center(i):
+        if prev_snake and move_t < 1.0 and i < len(prev_snake):
+            bx = prev_snake[i][0] + (snake[i][0] - prev_snake[i][0]) * move_t
+            by = prev_snake[i][1] + (snake[i][1] - prev_snake[i][1]) * move_t
+        else:
+            bx, by = float(snake[i][0]), float(snake[i][1])
+        return int(bx * CELL + CELL // 2), int(by * CELL + CELL // 2)
+
+    centers = [interp_center(i) for i in range(len(snake))]
+
+    # Filled polygon connectors between consecutive segment centers
+    for i in range(len(centers) - 1):
+        ax, ay = centers[i]
+        bx, by = centers[i + 1]
+        dx, dy = bx - ax, by - ay
+        length = math.hypot(dx, dy)
+        if length < 1:
+            continue
+        nx = -dy / length * R
+        ny =  dx / length * R
+        pts = [
+            (int(ax + nx), int(ay + ny)),
+            (int(ax - nx), int(ay - ny)),
+            (int(bx - nx), int(by - ny)),
+            (int(bx + nx), int(by + ny)),
+        ]
+        pygame.draw.polygon(screen, col_outer, pts)
+
+    # Circle caps at each body segment (index 1 = neck to end = tail)
+    for cx, cy in centers[1:]:
+        fcirc(screen, col_outer, cx, cy, R)
+
+    # Inner highlight stripe
+    for cx, cy in centers[1:]:
+        fcirc(screen, col_inner, cx, cy, r)
+
+
 def draw_game_scene(screen, fonts, save, snake, direction, food, score,
                     character, mode, time_left, obstacles, food_surfs, body_surfs, particles,
                     prev_snake=None, move_t=1.0, static_surfs=None):
@@ -841,14 +891,7 @@ def draw_game_scene(screen, fonts, save, snake, direction, food, score,
         for obs in obstacles:
             pygame.draw.rect(screen, OBSTACLE_C,
                              (obs[0]*CELL+3, obs[1]*CELL+3, CELL-6, CELL-6), border_radius=6)
-    # Draw body with interpolation (tail → neck, so neck is drawn on top)
-    for i in range(len(snake) - 1, 0, -1):
-        if prev_snake and move_t < 1.0 and i < len(prev_snake):
-            bx = prev_snake[i][0] + (snake[i][0] - prev_snake[i][0]) * move_t
-            by = prev_snake[i][1] + (snake[i][1] - prev_snake[i][1]) * move_t
-            screen.blit(body_surfs[character], (int(bx * CELL), int(by * CELL)))
-        else:
-            screen.blit(body_surfs[character], (snake[i][0]*CELL, snake[i][1]*CELL))
+    draw_snake_body(screen, snake, character, prev_snake, move_t)
     if snake:
         # Interpolate head position
         if prev_snake and move_t < 1.0:
