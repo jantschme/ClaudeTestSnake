@@ -841,8 +841,14 @@ def draw_game_scene(screen, fonts, save, snake, direction, food, score,
         for obs in obstacles:
             pygame.draw.rect(screen, OBSTACLE_C,
                              (obs[0]*CELL+3, obs[1]*CELL+3, CELL-6, CELL-6), border_radius=6)
-    for seg in reversed(snake[1:]):
-        screen.blit(body_surfs[character], (seg[0]*CELL, seg[1]*CELL))
+    # Draw body with interpolation (tail → neck, so neck is drawn on top)
+    for i in range(len(snake) - 1, 0, -1):
+        if prev_snake and move_t < 1.0 and i < len(prev_snake):
+            bx = prev_snake[i][0] + (snake[i][0] - prev_snake[i][0]) * move_t
+            by = prev_snake[i][1] + (snake[i][1] - prev_snake[i][1]) * move_t
+            screen.blit(body_surfs[character], (int(bx * CELL), int(by * CELL)))
+        else:
+            screen.blit(body_surfs[character], (snake[i][0]*CELL, snake[i][1]*CELL))
     if snake:
         # Interpolate head position
         if prev_snake and move_t < 1.0:
